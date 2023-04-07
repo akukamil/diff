@@ -1,12 +1,13 @@
 var M_WIDTH=800, M_HEIGHT=450;
 var app ={stage:{},renderer:{}}, game_res, objects={}, game_tick=0, LANG = 0,git_src,some_process = {}, game_platform='';
-var my_data={opp_id : ''};
+var my_data={opp_id : ''},my_card;
 const place_xpos=[0,160,320,480];
 
 irnd = function (min,max) {	
     min = Math.ceil(min);
     max = Math.floor(max);
     return Math.floor(Math.random() * (max - min + 1)) + min;
+	//inclusive
 }
 
 const rgb_to_hex = (r, g, b) => '0x' + [r, g, b].map(x => {
@@ -61,29 +62,30 @@ class player_card_class extends PIXI.Container{
 		this.place=0;
 		
 		this.bcg=new PIXI.Sprite(gres.pcard_bcg.texture);
-		this.bcg.width=80;
-		this.bcg.height=80;
-		this.bcg.x=30;
-		this.bcg.y=10;
-		
-		this.avatar=new PIXI.Sprite();
-		this.avatar.width=60;
-		this.avatar.height=60;		
-		this.avatar.anchor.set(0.5,0.5);
-		this.avatar.y=50;
-		this.avatar.x=70;
+		this.bcg.width=170;
+		this.bcg.height=120;
+						
+		this.avatar_bcg=new PIXI.Sprite(gres.pcard_avatar_bcg.texture);
+		this.avatar_bcg.width=80;
+		this.avatar_bcg.height=80;
+		this.avatar_bcg.x=10;
+		this.avatar_bcg.y=10;
+		this.avatar_bcg.anchor.set(0,0)
 		
 		this.frame=new PIXI.Sprite(gres.pcard_frame.texture);
 		this.frame.width=80;
 		this.frame.height=80;
-		this.frame.x=30;
+		this.frame.x=10;
 		this.frame.y=10;
-			
+		this.frame.anchor.set(0,0)			
 		
+		this.avatar=new PIXI.Sprite();
+		this.avatar.width=60;
+		this.avatar.height=60;		
+		this.avatar.x=50;
+		this.avatar.y=50;
+		this.avatar.anchor.set(0.5,0.5);		
 		
-		this.frame2=new PIXI.Sprite(gres.pcard_frame2.texture);
-		this.frame2.width=170;
-		this.frame2.height=120;
 
 		
 		this.cross_out=new PIXI.Sprite(gres.cross_out_img.texture);
@@ -91,16 +93,21 @@ class player_card_class extends PIXI.Container{
 		this.cross_out.height=120;
 		this.cross_out.visible=false;
 				
+		this.corner=new PIXI.Sprite(gres.pcard_corner.texture);
+		this.corner.width=70;
+		this.corner.height=70;
+		
+				
 		this.place_t=new PIXI.Sprite(gres.num_pic1.texture);
 		this.place_t.width=40;
-		this.place_t.height=70;
+		this.place_t.height=50;
 		this.place_t.x=5;
 		
 		this.name=new PIXI.BitmapText('', {fontName: 'mfont',fontSize: 20});
 		this.name.x=85
 		this.name.y=95;
 		this.name.anchor.set(0.5,0.5);
-		this.name.tint=0x111111;
+		this.name.tint=0xffffff;
 		
 		this.y=this.sy=-3;
 		this.id=0;
@@ -113,19 +120,20 @@ class player_card_class extends PIXI.Container{
 		this.process=function(){};
 		
 		this.points=[];
-		for (let x=0;x<3;x++){		
-			for(let y=0;y<4;y++){		
+		for(let y=0;y<3;y++){	
+			for (let x=0;x<4;x++){		
+				
 
 				const pnt=new PIXI.Sprite(gres.point.texture);
 				pnt.width=25;
 				pnt.height=25;
-				pnt.x=100+x*15;
+				pnt.x=82+x*17;
 				pnt.y=y*15+15;				
 				this.points.push(pnt);
 			}			
 		}
 		
-		this.addChild(this.frame2,this.place_t,this.bcg,this.avatar,this.frame,this.name,...this.points,this.cross_out);
+		this.addChild(this.bcg,this.avatar_bcg,this.avatar,this.frame,this.corner,this.place_t,this.name,...this.points,this.cross_out);
 		
 	}
 	
@@ -192,7 +200,7 @@ class player_card_class extends PIXI.Container{
 			return;
 		if(game_tick>this.next_find_time){
 			
-			this.next_find_time=game_tick+irnd(3,10);
+			this.next_find_time=game_tick+3+Math.random()*7;
 			this.add_point();
 			console.log('fp added points')
 		}
@@ -430,6 +438,7 @@ sound = {
 	
 }
 
+/*
 dialog={
 	
 	invite:false,
@@ -604,7 +613,7 @@ dialog={
 	
 	
 }
-
+*/
 make_text = function (obj, text, max_width) {
 
 	let sum_v=0;
@@ -643,11 +652,15 @@ game={
 		//если открыт лидерборд то закрываем его
 		if (objects.lb_1_cont.visible===true) lb.close();		
 				
-		//загружаем картинки
-		const loader=new PIXI.Loader();
+
 		
 		this.mode='online';
-
+		
+		pic_id=irnd(0,27);
+		
+		
+		//загружаем картинки
+		const loader=new PIXI.Loader();
 		loader.add('pic1',`pics/${pic_id}/pic1.png`);
 		loader.add('pic2',`pics/${pic_id}/pic2.png`);
 		loader.add('dp',`pics/${pic_id}/dp.txt`);
@@ -671,10 +684,16 @@ game={
 		objects.pic1.pointerdown=this.tap;
 		objects.pic2.pointerdown=this.tap;
 		
+		//короткое обращение к моей карточке
+		my_card=objects.player_cards[3];
+		
+
+		
 		//массив активных игроков
 		this.active_players=[];
 		for(let p=0;p<4;p++)
 			this.active_players.push(objects.player_cards[p]);
+		
 		
 		
 		objects.player_cards[0].start_search();
@@ -702,7 +721,6 @@ game={
 	close:function(){
 		
 		//общие элементы для игры
-		objects.mini_dialog.visible=false;	
 		objects.player_cards[0].visible=false;
 		objects.player_cards[1].visible=false;
 		objects.player_cards[2].visible=false;
@@ -713,12 +731,13 @@ game={
 		objects.pic2cont.visible=false;
 	},
 		
-	async finish_event () {
+	finish_event () {
 				
 		//останавливаем игру
 		some_process.game=function(){};
 		
-		await anim2.wait(2);
+		//await anim2.wait(2);
+				
 		
 		const last_player=this.get_last_player();
 		const is_fin_round=this.active_players.length===2;
@@ -751,9 +770,16 @@ game={
 	},
 	
 	async process_my_win_round(last_player){
+		
+		
+		
 		console.log('process_my_win_round');	
 		objects.dialog_no.visible=false;
 		objects.dialog_ok.visible=false;
+		objects.dialog_cont.visible=true;
+		objects.dialog_notice.text='Вы прошли в следующий раунд!';
+		await anim2.wait(3);
+		objects.dialog_cont.visible=false;
 
 		//удаляем из массива активных игроков
 		this.active_players = this.active_players.filter(function(card) {return card.id !== last_player.id});
@@ -809,17 +835,40 @@ game={
 		objects.dialog_no.visible=true;
 		objects.dialog_ok.visible=true;
 		
-		objects.dialog_no.pointerdown=function(){			
+		
+		const res=await new Promise(resolver=>{			
+			objects.dialog_no.pointerdown=function(){resolver('no')};			
+			objects.dialog_ok.pointerdown=function(){resolver('ok')};	
+		})
+		
+		
+		if(res==='no'){			
 			game.close();
 			main_menu.activate();			
 			objects.dialog_cont.visible=false;
 		}
 		
-		objects.dialog_ok.pointerdown=function(){	
+		if(res==='ok'){			
 			game.mode='single';			
 			objects.time_bar.visible=false;
 			objects.dialog_cont.visible=false;
+			
+			
+			for (let p of this.active_players){
+				if(!p.me)
+					await anim2.add(p,{y:[p.sy, p.sy-200]}, false, 0.5,'easeInBack');	
+			}
+			
+			my_card.corner.visible=false;
+			my_card.place_t.visible=false;
+			
+			anim2.add(my_card.cross_out,{alpha:[1, 0]}, false, 0.5,'linear');	
+			await anim2.add(my_card,{x:[my_card.x, 0]}, true, 0.5,'linear');	
+			
 		}
+		
+		
+		
 		
 	},
 	
@@ -830,7 +879,23 @@ game={
 		anim2.add(objects.pic1cont,{x:[objects.pic1cont.sx, objects.pic1cont.sx-500]}, true, 0.5,'linear');	
 		await anim2.add(objects.pic2cont,{x:[objects.pic2cont.sx, objects.pic2cont.sx+500]}, true, 0.5,'linear');	
 		objects.loading_header.visible=true;
+		
+		
+		//загружаем картинки
+		const loader=new PIXI.Loader();
+		pic_id=irnd(0,27);
+		loader.add('pic1',`pics/${pic_id}/pic1.png`);
+		loader.add('pic2',`pics/${pic_id}/pic2.png`);
+		loader.add('dp',`pics/${pic_id}/dp.txt`);
+		await new Promise(resolve=> loader.load(resolve))
+		
+		objects.pic1.texture=loader.resources.pic1.texture;
+		objects.pic2.texture=loader.resources.pic2.texture;
+		this.dp=JSON.parse(loader.resources.dp.data);
 		await anim2.wait(1);
+		
+		
+		
 		objects.loading_header.visible=false;
 		anim2.add(objects.pic1cont,{x:[objects.pic1cont.sx-500, objects.pic1cont.sx]}, true, 0.5,'linear');	
 		await anim2.add(objects.pic2cont,{x:[objects.pic2cont.sx+500, objects.pic2cont.sx]}, true, 0.5,'linear');	
@@ -856,19 +921,7 @@ game={
 		
 		
 	},
-	
-	get_active_players_num(){
 		
-		let num=0;
-		for(let c=0;c<4;c++){			
-			const player_card=objects.player_cards[c];
-			if (player_card.visible)
-				num++
-		}
-		return num;
-		
-	},
-	
 	get_last_player(){
 				
 		//делаем массив игроков 
@@ -878,6 +931,10 @@ game={
 			if (player_card.visible)
 				players.push(player_card);
 		}
+		
+		if(players.length<2)
+			return 'single';
+
 		
 		//сортируем массив игроков по найденым точкам
 		players.sort((a,b) => a.found_points - b.found_points); 
@@ -931,6 +988,14 @@ game={
 	},
 		
 	recalc_places(){
+		
+		//проверяем завершение одиночной игры
+		if(this.mode==='single'){			
+			if(my_card.found_points===10)
+				this.finish_event();
+			return;
+		}
+		
 		
 		//сортируем по найденым очкам (по убывания очков)
 		this.active_players=this.active_players.sort((a,b) =>  b.found_points - a.found_points)
@@ -1253,6 +1318,13 @@ search_menu={
 		objects.player_cards[1].set_pending();
 		objects.player_cards[2].set_pending();
 		
+		//короткое глобальное обращение к моей карточке
+		my_card=objects.player_cards[3];
+		
+		//показываем так как могли это удалить при одиночной игре
+		my_card.corner.visible=true;
+		my_card.place_t.visible=true;
+		
 		
 		objects.player_cards[0].visible=true;
 		objects.player_cards[1].visible=true;
@@ -1260,7 +1332,7 @@ search_menu={
 		objects.player_cards[3].visible=true;
 		
 		//подсвечиваем мою карточку
-		objects.player_cards[3].frame2.tint=0xff5555;
+		objects.player_cards[3].bcg.tint=0xff5555;
 		
 		this.load_photos();
 	},
