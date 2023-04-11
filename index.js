@@ -883,6 +883,8 @@ game={
 		//загружаем картинки
 		const loader=new PIXI.Loader();
 		pic_id=irnd(0,74);
+		pic_id=60;
+		console.log('PIC_ID: ',pic_id)
 		loader.add('pic1',`pics/${pic_id}/pic1.png`);
 		loader.add('pic2',`pics/${pic_id}/pic2.png`);
 		loader.add('dp',`pics/${pic_id}/dp.txt`);
@@ -890,11 +892,13 @@ game={
 		
 		objects.pic1.texture=loader.resources.pic1.texture;
 		objects.pic2.texture=loader.resources.pic2.texture;
-		this.dp=JSON.parse(loader.resources.dp.data);
+		const dp_data=JSON.parse(loader.resources.dp.data);
+		this.dp=dp_data[0];
 		
+		
+		console.log('DP_LENGH: ',this.dp.length);
+		console.log(dp_data[1],dp_data[2]);
 			
-		
-		
 		objects.loading_header.visible=false;
 		
 		//показываем надпись раунд
@@ -1012,7 +1016,7 @@ game={
 		
 		//проверяем завершение одиночной игры
 		if(this.mode==='single'){			
-			if(my_card.found_points===10)
+			if(my_card.found_points===this.dp.length)
 				this.finish_event();
 			return;
 		}
@@ -1030,7 +1034,7 @@ game={
 			if (player.place!==i)
 				player.change_place(i);
 			
-			if(player.found_points===this.dp.length-1)
+			if(player.found_points===this.dp.length)
 				finish_flag=true;
 		}
 		
