@@ -673,41 +673,31 @@ game={
 		this.found=0;
 		this.my_found=0;
 		
-		some_process.game=this.process.bind(this);
-		this.start_time=Date.now();
+		//some_process.game=this.process.bind(this);
+		//this.start_time=Date.now();
 					
-		objects.time_bar.visible=true;
-		
-		objects.pic1.interactive=true;
-		objects.pic2.interactive=true;
-		
-		objects.pic1.pointerdown=this.tap;
-		objects.pic2.pointerdown=this.tap;
+
 		
 		//короткое обращение к моей карточке
 		my_card=objects.player_cards[3];
-		
-
-		
+				
 		//массив активных игроков
 		this.active_players=[];
 		for(let p=0;p<4;p++)
 			this.active_players.push(objects.player_cards[p]);
+				
 		
-		
-		
-		objects.player_cards[0].start_search();
-		objects.player_cards[1].start_search();
-		objects.player_cards[2].start_search();
-		
-		anim2.add(objects.pic1cont,{x:[objects.pic1cont.sx-400, objects.pic1cont.sx]}, true, 0.5,'linear');	
-		anim2.add(objects.pic2cont,{x:[objects.pic2cont.sx+400, objects.pic2cont.sx]}, true, 0.5,'linear');	
-		
-		objects.circles.forEach(c=>c.visible=false);
+		this.replay();
 
 	},
+	
+	async show_new_round_info(){
+		
+		await anim2.add(objects.new_round_info,{scale_xy:[3, 0.666]}, true, 0.5,'linear');	
+		anim2.add(objects.new_round_info,{alpha:[1, 0],scale_xy:[0.666, 0.555]}, false, 3,'linear');	
+	},
 			
-	play_finish_sound : function(result) {
+	play_finish_sound(result) {
 		
 		if (result === LOSE )
 			sound.play('lose');
@@ -718,7 +708,7 @@ game={
 		
 	},
 		
-	close:function(){
+	close(){
 		
 		//общие элементы для игры
 		objects.player_cards[0].visible=false;
@@ -770,9 +760,7 @@ game={
 	},
 	
 	async process_my_win_round(last_player){
-		
-		
-		
+				
 		console.log('process_my_win_round');	
 		objects.dialog_no.visible=false;
 		objects.dialog_ok.visible=false;
@@ -781,14 +769,21 @@ game={
 		await anim2.wait(3);
 		objects.dialog_cont.visible=false;
 
+		//если картинки видны то сначала убираем их
+		if (objects.pic1cont.visible){
+			anim2.add(objects.pic1cont,{x:[objects.pic1cont.sx, objects.pic1cont.sx-500]}, false, 0.5,'linear');	
+			await anim2.add(objects.pic2cont,{x:[objects.pic2cont.sx, objects.pic2cont.sx+500]}, false, 0.5,'linear');				
+		}
+
+
 		//удаляем из массива активных игроков
 		this.active_players = this.active_players.filter(function(card) {return card.id !== last_player.id});
 				
 		//показываем крест
-		await anim2.add(last_player.cross_out,{alpha:[0, 1]}, true, 1.5,'linear');	
+		await anim2.add(last_player.cross_out,{alpha:[0, 1]}, true, 1,'linear');	
 				
 		//убираем с экрана
-		await anim2.add(last_player,{y:[last_player.sy, last_player.sy-200]}, false, 1.5,'easeInBack');	
+		await anim2.add(last_player,{y:[last_player.sy, last_player.sy-200]}, false, 1,'easeInBack');	
 		
 		this.replay();		
 	},
@@ -876,14 +871,18 @@ game={
 		
 		objects.circles.forEach(c=>c.visible=false);
 		
-		anim2.add(objects.pic1cont,{x:[objects.pic1cont.sx, objects.pic1cont.sx-500]}, true, 0.5,'linear');	
-		await anim2.add(objects.pic2cont,{x:[objects.pic2cont.sx, objects.pic2cont.sx+500]}, true, 0.5,'linear');	
+		//если картинки видны то сначала убираем их
+		if (objects.pic1cont.visible){
+			anim2.add(objects.pic1cont,{x:[objects.pic1cont.sx, objects.pic1cont.sx-500]}, false, 0.5,'linear');	
+			await anim2.add(objects.pic2cont,{x:[objects.pic2cont.sx, objects.pic2cont.sx+500]}, false, 0.5,'linear');				
+		}
+
 		objects.loading_header.visible=true;
 		
 		
 		//загружаем картинки
 		const loader=new PIXI.Loader();
-		pic_id=irnd(0,27);
+		pic_id=irnd(0,74);
 		loader.add('pic1',`pics/${pic_id}/pic1.png`);
 		loader.add('pic2',`pics/${pic_id}/pic2.png`);
 		loader.add('dp',`pics/${pic_id}/dp.txt`);
@@ -892,11 +891,25 @@ game={
 		objects.pic1.texture=loader.resources.pic1.texture;
 		objects.pic2.texture=loader.resources.pic2.texture;
 		this.dp=JSON.parse(loader.resources.dp.data);
-		await anim2.wait(1);
 		
+			
 		
 		
 		objects.loading_header.visible=false;
+		
+		//показываем надпись раунд
+		if (this.active_players.length===2)
+			objects.new_round_info.texture=gres.final_round_info.texture;
+		else
+			objects.new_round_info.texture=gres.new_round_info.texture;
+		
+		
+		await anim2.add(objects.new_round_info,{scale_xy:[3, 0.666],alpha:[0.5,1],rotation:[0.5,0]}, true, 0.5,'linear');
+		await anim2.wait(1);
+		await anim2.add(objects.new_round_info,{scale_xy:[0.666, 5],alpha:[1,0],rotation:[0,-0.5]}, true, 0.5,'linear');	
+		
+		
+		
 		anim2.add(objects.pic1cont,{x:[objects.pic1cont.sx-500, objects.pic1cont.sx]}, true, 0.5,'linear');	
 		await anim2.add(objects.pic2cont,{x:[objects.pic2cont.sx+500, objects.pic2cont.sx]}, true, 0.5,'linear');	
 		
@@ -904,6 +917,14 @@ game={
 			player.make_zero();
 			player.start_search();
 		}
+		
+		objects.time_bar.visible=true;
+		
+		objects.pic1.interactive=true;
+		objects.pic2.interactive=true;
+		
+		objects.pic1.pointerdown=this.tap;
+		objects.pic2.pointerdown=this.tap;
 				
 		//обнуляем найденые точки
 		this.dp.forEach(p=>p[2]=0);
@@ -971,16 +992,16 @@ game={
 		dp[2]=1;
 		objects.circles[game.found].x=dp[0]+objects.pic1.x+objects.pic1cont.x;
 		objects.circles[game.found].y=dp[1]+objects.pic1.y+objects.pic1cont.y;
-		objects.circles[game.found].width=45;
-		objects.circles[game.found].height=45;
+		objects.circles[game.found].width=35;
+		objects.circles[game.found].height=35;
 		anim2.add(objects.circles[game.found],{alpha:[0, 1]}, true, 0.5,'linear');	
 		
 		game.found++;
 		
 		objects.circles[game.found].x=dp[0]+objects.pic2.x+objects.pic2cont.x;
 		objects.circles[game.found].y=dp[1]+objects.pic2.y+objects.pic2cont.y;
-		objects.circles[game.found].width=45;
-		objects.circles[game.found].height=45;
+		objects.circles[game.found].width=35;
+		objects.circles[game.found].height=35;
 		anim2.add(objects.circles[game.found],{alpha:[0, 1]}, true, 0.5,'linear');	
 		
 		game.found++;
@@ -1009,7 +1030,7 @@ game={
 			if (player.place!==i)
 				player.change_place(i);
 			
-			if(player.found_points===10)
+			if(player.found_points===this.dp.length-1)
 				finish_flag=true;
 		}
 		
@@ -1771,8 +1792,8 @@ async function load_resources() {
 	
 	document.getElementById("m_progress").style.display = 'flex';
 
-	git_src="https://akukamil.github.io/chess_gp/"
-	git_src=""
+	git_src="https://akukamil.github.io/diff/"
+	//git_src=""
 
 	//подпапка с ресурсами
 	let lang_pack = ['RUS','ENG'][LANG];
@@ -2089,7 +2110,7 @@ async function init_game_env(lang) {
 	objects.id_avatar.texture=loader.resources.my_avatar.texture;	
 	
 	//устанавлием имя на карточки
-	//make_text(objects.id_name,my_data.name,150);
+	make_text(objects.id_name,my_data.name,150);
 	//make_text(objects.my_card_name,my_data.name,150);
 		
 	
