@@ -1073,7 +1073,7 @@ game={
 			const dy=dp[1]-my;
 			const d=Math.sqrt(dx*dx+dy*dy);
 			
-			if (d<30 && dp[2]===0) {				
+			if (d<20 && dp[2]===0) {				
 				game.place_found_diff(dp);
 				objects.player_cards[3].add_point();
 				any_found=true;
