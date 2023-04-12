@@ -882,8 +882,8 @@ game={
 		
 		//загружаем картинки
 		const loader=new PIXI.Loader();
-		pic_id=irnd(0,74);
-		pic_id=60;
+		pic_id=irnd(0,84);
+		//pic_id=72;
 		console.log('PIC_ID: ',pic_id)
 		loader.add('pic1',`pics/${pic_id}/pic1.png`);
 		loader.add('pic2',`pics/${pic_id}/pic2.png`);
