@@ -1,6 +1,6 @@
 var M_WIDTH=800, M_HEIGHT=450;
 var app ={stage:{},renderer:{}}, game_res, objects={}, game_tick=0, LANG = 0,git_src,some_process = {}, game_platform='';
-var my_data={opp_id : ''},my_card;
+var my_data={opp_id : ''}, my_card;
 const place_xpos=[0,160,320,480];
 
 irnd = function (min,max) {	
@@ -751,11 +751,11 @@ game={
 	async process_more_than_one(){
 		console.log('process_more_than_one');	
 		objects.dialog_no.visible=false;
-		objects.dialog_ok.visible=false;
-		objects.dialog_cont.visible=true;
-		objects.dialog_notice.text='не могу определить проигравшего. Играем еще раз...';
+		objects.dialog_ok.visible=false;	
+		objects.dialog_notice.text='не могу определить проигравшего. Играем еще раз...';		
+		await anim2.add(objects.dialog_cont,{scale_y:[0, 1]}, true, 0.25,'linear');	
 		await anim2.wait(3);
-		objects.dialog_cont.visible=false;
+		await anim2.add(objects.dialog_cont,{scale_y:[1, 0]}, false, 0.25,'linear');	
 		this.replay();		
 	},
 	
@@ -764,10 +764,10 @@ game={
 		console.log('process_my_win_round');	
 		objects.dialog_no.visible=false;
 		objects.dialog_ok.visible=false;
-		objects.dialog_cont.visible=true;
+		await anim2.add(objects.dialog_cont,{scale_y:[0, 1]}, true, 0.25,'linear');	
 		objects.dialog_notice.text='Вы прошли в следующий раунд!';
 		await anim2.wait(3);
-		objects.dialog_cont.visible=false;
+		await anim2.add(objects.dialog_cont,{scale_y:[1, 0]}, false, 0.25,'linear');	
 
 		//если картинки видны то сначала убираем их
 		if (objects.pic1cont.visible){
@@ -790,52 +790,65 @@ game={
 	
 	async process_my_win_game(){
 		console.log('process_my_win_game');
-		objects.dialog_cont.visible=true;
-		objects.dialog_notice.text='Вы выиграли)))';
 		
+		objects.dialog_notice.text='Вы выиграли)))';
+		await anim2.add(objects.dialog_cont,{scale_y:[0, 1]}, true, 0.25,'linear');	
 		objects.dialog_no.visible=false;
 		objects.dialog_ok.visible=true;
 				
-		objects.dialog_ok.pointerdown=function(){	
-			game.close();
-			main_menu.activate();			
-			objects.dialog_cont.visible=false;
-		}
+		await new Promise(resolve=>{			
+			objects.dialog_ok.pointerdown=resolve;			
+		})				
+
+		game.close();
+		main_menu.activate();			
+		await anim2.add(objects.dialog_cont,{scale_y:[1, 0]}, false, 0.25,'linear');	
+
 	},
 	
 	async process_my_win_single(){
 		console.log('process_my_win_game');
-		objects.dialog_cont.visible=true;
+
 		objects.dialog_notice.text='Вы нашли все отличия, но не выиграли партию(((';
-		
 		objects.dialog_no.visible=false;
 		objects.dialog_ok.visible=true;
+		await anim2.add(objects.dialog_cont,{scale_y:[0, 1]}, true, 0.25,'linear');	
 				
-		objects.dialog_ok.pointerdown=function(){	
-			game.close();
-			main_menu.activate();			
-			objects.dialog_cont.visible=false;
-		}
+				
+		await new Promise(resolve=>{			
+			objects.dialog_ok.pointerdown=resolve;			
+		})	
+				
+
+		game.close();
+		main_menu.activate();			
+		await anim2.add(objects.dialog_cont,{scale_y:[1, 0]}, false, 0.25,'linear');	
+
 	},
 		
-	async process_my_out(last_player){
+	async process_my_out(){
 		console.log('process_my_out');
 		
 		//показываем крест
-		await anim2.add(last_player.cross_out,{alpha:[0, 1]}, true, 1,'linear');	
+		await anim2.add(my_card.cross_out,{alpha:[0, 1]}, true, 1,'linear');	
+		
 		
 		objects.dialog_cont.visible=true;
+
+		
+		await anim2.add(objects.dialog_cont,{scale_y:[0, 1]}, true, 0.25,'linear');	
 		objects.dialog_notice.text='Вы выбыли из игры(((.\nПродолжить искать?';
 		
 		objects.dialog_no.visible=true;
-		objects.dialog_ok.visible=true;
-		
+		objects.dialog_ok.visible=true;		
+		objects.dialog_notice.visible=true;
 		
 		const res=await new Promise(resolver=>{			
 			objects.dialog_no.pointerdown=function(){resolver('no')};			
 			objects.dialog_ok.pointerdown=function(){resolver('ok')};	
-		})
+		})	
 		
+		await anim2.add(objects.dialog_cont,{scale_y:[1, 0]}, false, 0.25,'linear');	
 		
 		if(res==='no'){			
 			game.close();
@@ -863,8 +876,7 @@ game={
 		}
 		
 		
-		
-		
+				
 	},
 	
 	async replay(){
@@ -882,7 +894,7 @@ game={
 		
 		//загружаем картинки
 		const loader=new PIXI.Loader();
-		pic_id=irnd(0,84);
+		pic_id=irnd(0,90);
 		//pic_id=72;
 		console.log('PIC_ID: ',pic_id)
 		loader.add('pic1',`pics/${pic_id}/pic1.png`);
@@ -1020,8 +1032,7 @@ game={
 				this.finish_event();
 			return;
 		}
-		
-		
+				
 		//сортируем по найденым очкам (по убывания очков)
 		this.active_players=this.active_players.sort((a,b) =>  b.found_points - a.found_points)
 				
@@ -1073,7 +1084,7 @@ game={
 			const dy=dp[1]-my;
 			const d=Math.sqrt(dx*dx+dy*dy);
 			
-			if (d<20 && dp[2]===0) {				
+			if (d<15 && dp[2]===0) {				
 				game.place_found_diff(dp);
 				objects.player_cards[3].add_point();
 				any_found=true;
@@ -1375,10 +1386,18 @@ search_menu={
 	async load_photos(){
 		
 		
-		const tex=await PIXI.Texture.from('search_video.mp4');
-		tex.baseTexture.resource.source.loop=true;
-		objects.search_video.texture=tex;
+		//const tex=await PIXI.Texture.from('search_video.mp4');
+		//tex.baseTexture.resource.source.loop=true;
+		gres.search_video.data.loop=true;
 		
+		gres.search_video.data.addEventListener("play", (event) => {console.log('play')});
+		gres.search_video.data.addEventListener("pause", (event) => {console.log('pause')});
+		gres.search_video.data.addEventListener("ended", (event) => {console.log('ended')});
+		gres.search_video.data.addEventListener("playing", (event) => {console.log('playing')});
+		gres.search_video.data.addEventListener("waiting", (event) => {console.log('waiting')});
+		
+		let texture = PIXI.Texture.from(gres.search_video.data);
+		objects.search_video.texture=texture;
 		
 		
 		const fp_ids=this.get_unique_valus(3,0,8583);
@@ -1797,7 +1816,7 @@ async function load_resources() {
 	document.getElementById("m_progress").style.display = 'flex';
 
 	git_src="https://akukamil.github.io/diff/"
-	//git_src=""
+	git_src=""
 
 	//подпапка с ресурсами
 	let lang_pack = ['RUS','ENG'][LANG];
