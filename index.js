@@ -1702,16 +1702,16 @@ search_menu={
 		let loader=new PIXI.Loader();
 		
 		//загружаем фотки
-		await new Promise((resolve, reject) => setTimeout(resolve, 1000));
+		await new Promise((resolve, reject) => setTimeout(resolve, irnd(2000,6000)));
 		await objects.player_cards[0].set(fp_ids[0])
 		sound.play('player_found');
-		await new Promise((resolve, reject) => setTimeout(resolve, 1000));
+		await new Promise((resolve, reject) => setTimeout(resolve, irnd(2000,6000)));
 		await objects.player_cards[1].set(fp_ids[1])
 		sound.play('player_found');
-		await new Promise((resolve, reject) => setTimeout(resolve, 1000));
+		await new Promise((resolve, reject) => setTimeout(resolve, irnd(2000,6000)));
 		await objects.player_cards[2].set(fp_ids[2])
 		sound.play('player_found');
-		await new Promise((resolve, reject) => setTimeout(resolve, 1000));
+		await new Promise((resolve, reject) => setTimeout(resolve, irnd(2000,3000)));
 		
 		gres.search_video.data.pause();
 		this.close();
