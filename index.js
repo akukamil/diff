@@ -746,7 +746,7 @@ game={
 		//останавливаем игру
 		some_process.game=function(){};
 		
-		this.music.stop();
+		//this.music.stop();
 		
 		this.bonuses.life=false;
 		this.bonuses.hint=false;
@@ -877,7 +877,7 @@ game={
 		objects.dialog_notice.text='Вы выбыли из игры(((.\nПродолжить искать?';		
 		
 		objects.dialog_notice2.text='Рейтинг: '+my_data.rating+' > '+(my_data.rating===0?0:(+my_data.rating-1));
-		my_data.rating=my_data.rating-1;		
+		if (my_data.rating>0) my_data.rating--;
 		
 		await anim2.add(objects.dialog_cont,{scale_y:[0, 1]}, true, 0.25,'linear');	
 		
@@ -985,7 +985,7 @@ game={
 		loader.add('music','music/titanium.mp3');
 		await new Promise(resolve=> loader.load(resolve))
 		
-		if(this.music) this.music.stop();
+		//if(this.music) this.music.stop();
 		this.music=loader.resources.music.sound;		
 		
 		this.mode='online';
@@ -1214,10 +1214,10 @@ game={
 		this.on=!this.on;
 		if(this.on){			
 			objects.music_button_off.visible=false;
-			game.music.resume();
+			//game.music.resume();
 		}else{
 			objects.music_button_off.visible=true;
-			game.music.pause();
+			//game.music.pause();
 		}
 		sound.play('click');
 	},
@@ -2356,7 +2356,8 @@ async function init_game_env(lang) {
 		});
 	}
 
-	//fake_players.run();return;		
+	//fake_players.run();return;	
+
 		
 	await define_platform_and_language();
 	console.log(game_platform, LANG);
