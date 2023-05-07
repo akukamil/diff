@@ -977,7 +977,7 @@ game={
 		//загружаем картинки
 		const loader=new PIXI.Loader();
 		pic_id=irnd(1,102);
-		//pic_id=0;
+		//pic_id=1;
 		console.log('PIC_ID: ',pic_id)
 		loader.add('pic1',`pics/${pic_id}/pic1.png`);
 		loader.add('pic2',`pics/${pic_id}/pic2.png`);
@@ -1017,7 +1017,7 @@ game={
 		
 		await anim2.add(objects.new_round_info,{scale_xy:[3, 0.666],alpha:[0.5,1],rotation:[0.5,0]}, true, 0.5,'linear');
 		await anim2.wait(1);
-		this.music.play();
+		//this.music.play();
 		
 		await anim2.add(objects.new_round_info,{scale_xy:[0.666, 5],alpha:[1,0],rotation:[0,-0.5]}, true, 0.5,'linear');	
 		
@@ -1335,8 +1335,8 @@ game={
 		
 		const cur_time=Date.now();
 		const time_passed=cur_time-this.start_time;
-		const pers_passed=(1-time_passed/90000);
-		objects.time_bar.width=objects.time_bar.base_width*(1-time_passed/90000)
+		const pers_passed=(1-time_passed/120000);
+		objects.time_bar.width=objects.time_bar.base_width*(1-time_passed/120000)
 				
 		if (pers_passed<=0){					
 			this.finish_event();
@@ -1615,7 +1615,8 @@ search_menu={
 		
 		//let videoBaseTexture = PIXI.VideoBaseTexture.fromVideo(gres.search_video.data)
 		objects.search_cont.visible=true;
-
+		
+		anim2.add(objects.search_header,{y:[500, objects.search_header.sy]}, true, 1,'linear');
 		
 		for(let p=0;p<4;p++){
 			objects.player_cards[p].set_place(p);
@@ -1727,19 +1728,39 @@ search_menu={
 		objects.player_cards[0].process();
 		objects.player_cards[1].process();
 		objects.player_cards[2].process();
+		
+		if (objects.search_header.ready)
+			anim2.add(objects.search_header,{scale_x:[0.666, 0.7]}, true, 1,'ease2back',false);
 	}
 	
 }
 
 main_menu={
 	
-	activate(){
+	async activate(){
 		
 		sound.play('start');
-		anim2.add(objects.game_title,{y:[-100, objects.game_title.sy],alpha:[0,1]}, true, 1,'linear',false);
-		anim2.add(objects.play_button,{y:[900, objects.play_button.sy]}, true, 1,'easeOutBack',false);
-		anim2.add(objects.lb_button,{y:[900, objects.lb_button.sy]}, true, 1.2,'easeOutBack',false);
-		anim2.add(objects.rules_button,{y:[900, objects.rules_button.sy]}, true, 0.5,'easeOutBack',false);
+		anim2.add(objects.header_title,{y:[-100, objects.header_title.sy],scale_x:[0.3,0.666]}, true, 1,'easeOutBounce',false);
+		anim2.add(objects.header_title2,{x:[1000, objects.header_title2.sx]}, true, 2,'linear',false);
+		anim2.add(objects.header_cards,{x:[-200, objects.header_cards.sx]}, true, 1,'easeOutBack',false);
+		anim2.add(objects.header_online,{scale_xy:[0, 0.666]}, true, 1,'easeOutBack',false);
+		await anim2.add(objects.header_loup,{y:[-500, objects.header_loup.sy]}, true, 1,'linear',false);
+		
+		anim2.add(objects.play_button,{y:[900, objects.play_button.sy]}, true, 1,'easeOutBack');
+		anim2.add(objects.lb_button,{y:[900, objects.lb_button.sy]}, true, 1.2,'easeOutBack');
+		anim2.add(objects.rules_button,{y:[900, objects.rules_button.sy]}, true, 0.5,'easeOutBack');
+		
+		some_process.main_menu=this.process;
+	},
+	
+	process(){
+		
+		objects.header_loup.x=objects.header_loup.sx+40*Math.sin(game_tick*3);
+		objects.header_loup.y=objects.header_loup.sy+40*Math.cos(game_tick*3);
+		
+		if (objects.header_title2.ready)
+			anim2.add(objects.header_title2,{scale_x:[0.666, 0.7]}, true, 1,'ease2back',false);
+		
 		
 	},
 	
@@ -1771,11 +1792,17 @@ main_menu={
 		
 	close(){
 		
-		anim2.add(objects.game_title,{y:[objects.game_title.sy,-100]}, false, 1,'linear',false);
-		anim2.add(objects.play_button,{y:[objects.play_button.y,900]}, false, 1,'easeInBack',false);
-		anim2.add(objects.lb_button,{y:[objects.lb_button.y,900]}, false, 1.2,'easeInBack',false);
+		anim2.add(objects.header_title,{y:[ objects.header_title.y,-100]}, false, 0.5,'linear',false);
+		anim2.add(objects.header_title2,{x:[objects.header_title2.x,1000]}, false, 0.5,'linear',false);
+		anim2.add(objects.header_cards,{x:[objects.header_cards.x,-200]}, false, 0.5,'linear',false);
+		anim2.add(objects.header_online,{scale_xy:[objects.header_online.scale_xy,0.05]}, false, 0.5,'linear',false);
+		anim2.add(objects.header_loup,{y:[ objects.header_loup.y,-500]}, false, 0.5,'linear',false);
+		
+		anim2.add(objects.play_button,{y:[objects.play_button.y,900]}, false, 0.5,'easeInBack',false);
+		anim2.add(objects.lb_button,{y:[objects.lb_button.y,900]}, false, 0.5,'easeInBack',false);
 		anim2.add(objects.rules_button,{y:[objects.rules_button.y,900]}, false, 0.5,'easeInBack',false);
 		
+		some_process.main_menu=function(){};
 	}
 		
 }
