@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html>
+
+
+	<meta name="http-equiv" content="Content-type: text/html; charset=windows-1251">
+
+	<script src="https://www.gstatic.com/firebasejs/8.3.0/firebase-app.js"></script>
+	<script src="https://www.gstatic.com/firebasejs/8.3.0/firebase-analytics.js"></script>
+	<script src="https://www.gstatic.com/firebasejs/8.2.10/firebase-database.js"></script>
+
+<style>
+
+	table {
+	  font-family: arial, sans-serif;
+	  border-collapse: collapse;
+	  width: 100%;
+	  margin: 0px 0px 20px;
+	}
+
+	td, th {
+	  border: 1px solid #dddddd;
+	  text-align: left;
+	  height: 4px;
+	  width: 50px;
+	  padding: 8px;  
+	}
+
+</style>
+
+<table id="players_table">
+  <tr>
+	<th>ID</th>
+	<th>FirstName</th>
+	<th>Rating</th>
+	<th>tm</th>
+	<th>tm</th>
+  </tr>
+</table>
+
+
+<script>
+
+	var players_table = document.getElementById('players_table');
+	
+	var firebaseConfig = {
+			apiKey: "AIzaSyBg80FwV8M25ftxUnijuIyAJjBJs4LMjtU",
+			authDomain: "diff-e0107.firebaseapp.com",
+			databaseURL: "https://diff-e0107-default-rtdb.europe-west1.firebasedatabase.app",
+			projectId: "diff-e0107",
+			storageBucket: "diff-e0107.appspot.com",
+			messagingSenderId: "791357475056",
+			appId: "1:791357475056:web:86590725dcb19e44291a35"
+	};
+	firebase.initializeApp(firebaseConfig);
+	firebase.analytics();
+	
+
+	main();
+	
+	async function main () {
+	
+		await load_for_clearing_old();
+		show_last();
+	
+	}
+	
+	
+	async function load_for_clearing_old() {
+	
+		//загружаем таблицу с данными всех игроков
+		let cur_ts=Date.now();
+		let total_removed=0;
+		
+		//загружаем всех и удаляем старые данные
+		let snapshot = await firebase.database().ref("players").orderByChild('tm').limitToFirst(3000).once('value')
+		
+		var data=snapshot.val();
+		data = Object.keys(data).map((key) => [key, data[key].name,data[key].tm]);
+		
+		data.forEach(p=>{		
+			let  days_without_visit=(cur_ts-p[2])/86400000;			
+			if (days_without_visit>20) {
+				firebase.database().ref("players/"+p[0]).remove();
+				total_removed++;
+			}
+		})
+		alert("Total removed: "+total_removed);
+
+
+	}
+	
+	async function show_last() {
+	
+		firebase.database().ref("players").orderByChild('tm').limitToLast(500).once('value',(snapshot) => {
+		
+			players_table.innerHTML='';
+			var data=snapshot.val();
+			data = Object.keys(data).map((key) => [key, data[key].name,data[key].rating,data[key].tm,new Date(data[key].tm).toLocaleString()]);
+			//data = data.filter(function (e) {
+			//  return e[4]!==undefined;
+			//});
+			
+			data.sort(function(a, b){return a[5] - b[5]});
+		
+			data.forEach(p=>{
+			
+				var newRow = players_table.insertRow();
+				newRow.insertCell(0).appendChild(document.createTextNode(p[0].substring(0,15)));
+				newRow.insertCell(1).appendChild(document.createTextNode(p[1]));
+				newRow.insertCell(2).appendChild(document.createTextNode(p[2]));
+				newRow.insertCell(3).appendChild(document.createTextNode(p[3]));
+				newRow.insertCell(4).appendChild(document.createTextNode(p[4]));
+			})
+			window.scrollTo(0,document.body.scrollHeight);			
+
+		})
+	
+	}
+	
+
+
+		
+	
+	
+
+
+		
+</script>
+
+
+
+</html>
