@@ -86,6 +86,7 @@ class player_card_class extends PIXI.Container{
 		this.avatar.y=50;
 		this.avatar.anchor.set(0.5,0.5);		
 		
+		this.life=3;
 
 		
 		this.cross_out=new PIXI.Sprite(gres.cross_out_img.texture);
@@ -112,6 +113,10 @@ class player_card_class extends PIXI.Container{
 		this.y=this.sy=-3;
 		this.id=0;
 		
+		
+		this.search_start_time=10;
+		this.search_inc_time=1;
+		
 		this.next_find_time=0;
 		this.me=false;
 		
@@ -133,7 +138,24 @@ class player_card_class extends PIXI.Container{
 			}			
 		}
 		
-		this.addChild(this.bcg,this.avatar_bcg,this.avatar,this.frame,this.corner,this.place_t,this.name,...this.points,this.cross_out);
+		
+		//это жизни игрока
+		this.lifes_markers=[];
+		for (let x=0;x<4;x++){	
+		
+			const pnt=new PIXI.Sprite(gres.life_marker.texture);
+			pnt.width=25;
+			pnt.height=25;
+			pnt.x=82+x*17;
+			pnt.y=62;			
+			pnt.visible=false;
+			this.lifes_markers.push(pnt);
+			
+		}		
+		
+		
+		
+		this.addChild(this.bcg,this.avatar_bcg,this.avatar,this.frame,this.corner,this.place_t,this.name,...this.points,...this.lifes_markers,this.cross_out);
 		
 	}
 	
@@ -156,7 +178,7 @@ class player_card_class extends PIXI.Container{
 	
 	start_search(){
 		
-		this.next_find_time=game_tick+irnd(5,10);
+		this.next_find_time=game_tick+3+Math.random()*7;
 		
 	}
 	
@@ -179,6 +201,34 @@ class player_card_class extends PIXI.Container{
 		this.avatar.texture=loader.resources['fp'+fp_id].texture||PIXI.Texture.WHITE;
 		this.process=function(){};
 		
+		this.search_start_time=10-(fp_id/8583)*5+Math.random()*3;
+		this.search_inc_time=1-(fp_id/8583);
+		this.next_find_time=this.search_start_time;
+		
+	}
+	
+	init_life(life_bonus){
+		
+		this.lifes_markers[3].visible=false;
+		
+		this.life=3+life_bonus;
+		for (let i=0;i<this.life;i++)
+			this.lifes_markers[i].visible=true;
+	}
+	
+	my_incorrect_event(){
+		
+		if(game.mode!=='online')
+			return;
+		
+		if (this.life===0){			
+			game.finish_event('no_life');
+			return;
+		}
+		
+		this.life--;
+		this.lifes_markers[this.life].visible=false;
+		
 	}
 	
 	process_pending(){
@@ -190,7 +240,7 @@ class player_card_class extends PIXI.Container{
 	add_point(){
 		
 		this.points[this.found_points].visible=true;
-		this.found_points++;
+		this.found_points++;		
 		game.recalc_places();
 		
 	}
@@ -200,8 +250,10 @@ class player_card_class extends PIXI.Container{
 			return;
 		if(game_tick>this.next_find_time){
 			
-			this.next_find_time=game_tick+3+Math.random()*7;
+
 			this.add_point();
+			this.next_find_time=game_tick+this.search_start_time+this.search_inc_time*this.found_points+Math.random()*20;			
+			sound.play('opp_diff_found');
 			console.log('fp added points')
 		}
 		
@@ -420,8 +472,7 @@ sound = {
 	on : 1,
 	
 	play : function(snd_res,res_source) {
-		
-		
+				
 		if(res_source===undefined)
 			res_source=gres;
 		
@@ -614,6 +665,7 @@ dialog={
 	
 }
 */
+
 make_text = function (obj, text, max_width) {
 
 	let sum_v=0;
@@ -642,41 +694,20 @@ game={
 	
 	dp:[],	
 	found:0,
-	my_found:0,
-	opp_found:0,
 	mode:'online',
 	active_players:[],
+	bonus_dialog_resolver:null,
+	music:null,
+	bonuses:{life:false,hint:false,no:false},
 		
-	async activate(pic_id=0) {
+	async activate() {
 							
 		//если открыт лидерборд то закрываем его
 		if (objects.lb_1_cont.visible===true) lb.close();		
-				
 
-		
 		this.mode='online';
-		
-		pic_id=irnd(0,27);
-		
-		
-		//загружаем картинки
-		const loader=new PIXI.Loader();
-		loader.add('pic1',`pics/${pic_id}/pic1.png`);
-		loader.add('pic2',`pics/${pic_id}/pic2.png`);
-		loader.add('dp',`pics/${pic_id}/dp.txt`);
-		await new Promise(resolve=> loader.load(resolve))
-		
-		objects.pic1.texture=loader.resources.pic1.texture;
-		objects.pic2.texture=loader.resources.pic2.texture;
-		this.dp=JSON.parse(loader.resources.dp.data);
-		
-		this.found=0;
-		this.my_found=0;
-		
-		//some_process.game=this.process.bind(this);
-		//this.start_time=Date.now();
-					
 
+			
 		
 		//короткое обращение к моей карточке
 		my_card=objects.player_cards[3];
@@ -685,8 +716,10 @@ game={
 		this.active_players=[];
 		for(let p=0;p<4;p++)
 			this.active_players.push(objects.player_cards[p]);
-				
 		
+		//устанавливаем мне проигрышный рейтингах
+		firebase.database().ref('players/'+my_data.uid+'/rating').set(my_data.rating===0?0:(my_data.rating-1));
+						
 		this.replay();
 
 	},
@@ -710,6 +743,14 @@ game={
 		
 	close(){
 		
+		//останавливаем игру
+		some_process.game=function(){};
+		
+		this.music.stop();
+		
+		this.bonuses.life=false;
+		this.bonuses.hint=false;
+		
 		//общие элементы для игры
 		objects.player_cards[0].visible=false;
 		objects.player_cards[1].visible=false;
@@ -719,44 +760,39 @@ game={
 		objects.circles.forEach(c=>c.visible=false);
 		objects.pic1cont.visible=false;
 		objects.pic2cont.visible=false;
+		objects.controls_cont.visible=false;
 	},
 		
-	finish_event () {
+	finish_event (event) {
 				
 		//останавливаем игру
-		some_process.game=function(){};
+		some_process.game=function(){};		
 		
-		//await anim2.wait(2);
-				
-		
+		//убираем кнопки чтобы никто не нажал
+		anim2.add(objects.controls_cont,{y:[objects.controls_cont.y,-200]}, false, 0.5,'linear');	
+					
 		const last_player=this.get_last_player();
 		const is_fin_round=this.active_players.length===2;
 		
-		if (last_player==='more_than_one_last' && this.mode==='online')
-			this.process_more_than_one();
-		
-		if (last_player!=='more_than_one_last' && !last_player.me && !is_fin_round && this.mode==='online')
+		if (event==='no_life')
+			this.process_my_out(my_card);
+				
+		if (event==='my_cancel')
+			this.process_my_cancel();
+				
+		if (last_player!=='more_than_one_last' && !last_player.me && !is_fin_round && this.mode==='online'&& !event)
 			this.process_my_win_round(last_player);
 		
-		if (last_player!=='more_than_one_last' && !last_player.me && is_fin_round && this.mode==='online')
+		if (last_player!=='more_than_one_last' && !last_player.me && is_fin_round && this.mode==='online'&& !event)
 			this.process_my_win_game();
 		
-		if (last_player.me && this.mode==='online')
+		if (last_player.me && this.mode==='online'&& !event)
 			this.process_my_out(last_player);
 		
-		if (this.mode==='single')
+		if (this.mode==='single'&& !event)
 			this.process_my_win_single();
-	},
-	
-	async process_more_than_one(){
-		console.log('process_more_than_one');	
-		objects.dialog_no.visible=false;
-		objects.dialog_ok.visible=false;	
-		objects.dialog_notice.text='не могу определить проигравшего. Играем еще раз...';		
-		await anim2.add(objects.dialog_cont,{scale_y:[0, 1]}, true, 0.25,'linear');	
-		await anim2.wait(3);
-		await anim2.add(objects.dialog_cont,{scale_y:[1, 0]}, false, 0.25,'linear');	
-		this.replay();		
+		
+		this.mode='finished';
 	},
 	
 	async process_my_win_round(last_player){
@@ -764,8 +800,10 @@ game={
 		console.log('process_my_win_round');	
 		objects.dialog_no.visible=false;
 		objects.dialog_ok.visible=false;
+		sound.play('win_round');
+		objects.dialog_notice.text='Вы прошли в следующий раунд!';		
+		objects.dialog_notice2.text=')))';
 		await anim2.add(objects.dialog_cont,{scale_y:[0, 1]}, true, 0.25,'linear');	
-		objects.dialog_notice.text='Вы прошли в следующий раунд!';
 		await anim2.wait(3);
 		await anim2.add(objects.dialog_cont,{scale_y:[1, 0]}, false, 0.25,'linear');	
 
@@ -790,11 +828,14 @@ game={
 	
 	async process_my_win_game(){
 		console.log('process_my_win_game');
-		
+		sound.play('applause');
+		firebase.database().ref('players/'+my_data.uid+'/rating').set(+my_data.rating+1);
 		objects.dialog_notice.text='Вы выиграли)))';
-		await anim2.add(objects.dialog_cont,{scale_y:[0, 1]}, true, 0.25,'linear');	
+		objects.dialog_notice2.text='Рейтинг: '+my_data.rating+' > '+(+my_data.rating+1);			
 		objects.dialog_no.visible=false;
-		objects.dialog_ok.visible=true;
+		objects.dialog_ok.visible=true;		
+		await anim2.add(objects.dialog_cont,{scale_y:[0, 1]}, true, 0.25,'linear');	
+
 				
 		await new Promise(resolve=>{			
 			objects.dialog_ok.pointerdown=resolve;			
@@ -810,34 +851,35 @@ game={
 		console.log('process_my_win_game');
 
 		objects.dialog_notice.text='Вы нашли все отличия, но не выиграли партию(((';
+		objects.dialog_notice2.text=')))';	
 		objects.dialog_no.visible=false;
 		objects.dialog_ok.visible=true;
 		await anim2.add(objects.dialog_cont,{scale_y:[0, 1]}, true, 0.25,'linear');	
-				
-				
+							
 		await new Promise(resolve=>{			
 			objects.dialog_ok.pointerdown=resolve;			
 		})	
 				
-
 		game.close();
+		await anim2.add(objects.dialog_cont,{scale_y:[1, 0]}, false, 0.25,'linear');			
+		await this.show_bonus_dialog();
 		main_menu.activate();			
-		await anim2.add(objects.dialog_cont,{scale_y:[1, 0]}, false, 0.25,'linear');	
 
 	},
 		
 	async process_my_out(){
 		console.log('process_my_out');
-		
+		sound.play('lose');
+
 		//показываем крест
 		await anim2.add(my_card.cross_out,{alpha:[0, 1]}, true, 1,'linear');	
+				
+		objects.dialog_notice.text='Вы выбыли из игры(((.\nПродолжить искать?';		
 		
-		
-		objects.dialog_cont.visible=true;
-
+		objects.dialog_notice2.text='Рейтинг: '+my_data.rating+' > '+(my_data.rating===0?0:(+my_data.rating-1));
+		my_data.rating=my_data.rating-1;		
 		
 		await anim2.add(objects.dialog_cont,{scale_y:[0, 1]}, true, 0.25,'linear');	
-		objects.dialog_notice.text='Вы выбыли из игры(((.\nПродолжить искать?';
 		
 		objects.dialog_no.visible=true;
 		objects.dialog_ok.visible=true;		
@@ -863,22 +905,61 @@ game={
 			
 			
 			for (let p of this.active_players){
-				if(!p.me)
-					await anim2.add(p,{y:[p.sy, p.sy-200]}, false, 0.5,'easeInBack');	
+				if(!p.me){
+					sound.play('card_shift');
+					await anim2.add(p,{y:[p.sy, p.sy-200]}, false, 0.25,'easeInBack');	
+					
+				}
+					
 			}
 			
 			my_card.corner.visible=false;
 			my_card.place_t.visible=false;
 			
 			anim2.add(my_card.cross_out,{alpha:[1, 0]}, false, 0.5,'linear');	
-			await anim2.add(my_card,{x:[my_card.x, 0]}, true, 0.5,'linear');	
+			sound.play('card_shift');
 			
+			await anim2.add(my_card,{x:[my_card.x, 0]}, true, 0.5,'linear');	
+			anim2.add(objects.controls_cont,{y:[-200, objects.controls_cont.sy]}, true, 0.5,'linear');	
 		}
-		
-		
-				
+						
 	},
-	
+		
+	async process_my_cancel(){
+
+		sound.play('lose');
+
+		//показываем крест
+		await anim2.add(my_card.cross_out,{alpha:[0, 1]}, true, 1,'linear');	
+				
+		objects.dialog_notice.text='Вы отменили игру!';		
+		
+		objects.dialog_notice2.text='Рейтинг: '+my_data.rating+' > '+(my_data.rating===0?0:(my_data.rating-1));
+		my_data.rating=my_data.rating-1;		
+		
+
+		
+		objects.dialog_no.visible=false;
+		objects.dialog_ok.visible=true;		
+		objects.dialog_notice.visible=true;
+		
+		await anim2.add(objects.dialog_cont,{scale_y:[0, 1]}, true, 0.25,'linear');			
+		
+		const res=await new Promise(resolver=>{			
+			objects.dialog_ok.pointerdown=function(){resolver('ok')};	
+		})	
+		
+		await anim2.add(objects.dialog_cont,{scale_y:[1, 0]}, false, 0.25,'linear');	
+		
+		
+		game.close();
+		main_menu.activate();			
+		objects.dialog_cont.visible=false;
+
+		
+						
+	},
+				
 	async replay(){
 		
 		objects.circles.forEach(c=>c.visible=false);
@@ -889,41 +970,67 @@ game={
 			await anim2.add(objects.pic2cont,{x:[objects.pic2cont.sx, objects.pic2cont.sx+500]}, false, 0.5,'linear');				
 		}
 
-		objects.loading_header.visible=true;
-		
-		
+		anim2.add(objects.loading_header,{alpha:[0, 1]}, true, 0.25,'linear');
+				
+		my_card.init_life(this.bonuses.life);
+				
 		//загружаем картинки
 		const loader=new PIXI.Loader();
-		pic_id=irnd(0,90);
-		//pic_id=72;
+		pic_id=irnd(1,102);
+		//pic_id=0;
 		console.log('PIC_ID: ',pic_id)
 		loader.add('pic1',`pics/${pic_id}/pic1.png`);
 		loader.add('pic2',`pics/${pic_id}/pic2.png`);
-		loader.add('dp',`pics/${pic_id}/dp.txt`);
+		loader.add('dp',`pics/${pic_id}/dp.txt`);		
+		loader.add('music','music/titanium.mp3');
 		await new Promise(resolve=> loader.load(resolve))
 		
+		if(this.music) this.music.stop();
+		this.music=loader.resources.music.sound;		
+		
+		this.mode='online';
 		objects.pic1.texture=loader.resources.pic1.texture;
 		objects.pic2.texture=loader.resources.pic2.texture;
 		const dp_data=JSON.parse(loader.resources.dp.data);
 		this.dp=dp_data[0];
 		
 		
+		objects.diff_num.text='Найди '+this.dp.length+' отличий';		
+		await anim2.add(objects.diff_num,{alpha:[0, 1]}, true, 0.5,'linear');
+		await anim2.wait(1);
+		anim2.add(objects.diff_num,{alpha:[1, 0]}, false, 0.5,'linear');
+		
+		
 		console.log('DP_LENGH: ',this.dp.length);
 		console.log(dp_data[1],dp_data[2]);
 			
-		objects.loading_header.visible=false;
+		anim2.add(objects.loading_header,{alpha:[1, 0]}, false, 0.25,'linear');
 		
 		//показываем надпись раунд
 		if (this.active_players.length===2)
-			objects.new_round_info.texture=gres.final_round_info.texture;
-		else
-			objects.new_round_info.texture=gres.new_round_info.texture;
+			objects.new_round_info.texture=gres.round_fin.texture;
+		if (this.active_players.length===3)
+			objects.new_round_info.texture=gres.round2.texture;
+		if (this.active_players.length===4)
+			objects.new_round_info.texture=gres.round1.texture;
 		
 		
 		await anim2.add(objects.new_round_info,{scale_xy:[3, 0.666],alpha:[0.5,1],rotation:[0.5,0]}, true, 0.5,'linear');
 		await anim2.wait(1);
+		this.music.play();
+		
 		await anim2.add(objects.new_round_info,{scale_xy:[0.666, 5],alpha:[1,0],rotation:[0,-0.5]}, true, 0.5,'linear');	
 		
+		
+		
+		
+		//кнопки с подсказками
+		if(this.bonuses.hint)
+			objects.hint_button.visible=true
+		else
+			objects.hint_button.visible=false
+		
+		anim2.add(objects.controls_cont,{y:[-200, objects.controls_cont.sy]}, true, 0.5,'linear');	
 		
 		
 		anim2.add(objects.pic1cont,{x:[objects.pic1cont.sx-500, objects.pic1cont.sx]}, true, 0.5,'linear');	
@@ -934,7 +1041,7 @@ game={
 			player.start_search();
 		}
 		
-		objects.time_bar.visible=true;
+		
 		
 		objects.pic1.interactive=true;
 		objects.pic2.interactive=true;
@@ -948,7 +1055,104 @@ game={
 		this.found=0;
 		
 		some_process.game=this.process.bind(this);
+		objects.time_bar.visible=true;
+		objects.time_bar.scale_x=1;
 		this.start_time=Date.now();
+		
+	},
+	
+	async bonus_card_down(card_id){
+				
+		if(anim2.any_on()){
+			sound.play('locked');
+			return;			
+		}
+		
+		
+		this.bonus_dialog_resolver(card_id);
+		
+	},
+	
+	async show_bonus_dialog(){
+		
+		objects.bonus0.visible=false;
+		objects.bonus1.visible=false;
+		objects.bonus2.visible=false;
+		objects.bonus_card0.visible=false;
+		objects.bonus_card1.visible=false;
+		objects.bonus_card2.visible=false;			
+		
+		objects.bonus_card0.y=objects.bonus_card0.sy;
+		objects.bonus_card1.y=objects.bonus_card1.sy;
+		objects.bonus_card2.y=objects.bonus_card2.sy;	
+		
+		await anim2.add(objects.bonus_cont,{y:[900,objects.bonus_cont.sy]}, true, 0.5,'linear');	
+
+		
+		sound.play('card_move');
+		await anim2.add(objects.bonus_card0,{x:[-100, objects.bonus_card0.sx],rotation:[-0.2,0]},true,0.25,'linear');	
+		sound.play('card_move');
+		await anim2.add(objects.bonus_card1,{x:[-100, objects.bonus_card1.sx],rotation:[-0.2,0]},true,0.25,'linear');	
+		sound.play('card_move');
+		await anim2.add(objects.bonus_card2,{x:[-100, objects.bonus_card2.sx],rotation:[-0.2,0]},true,0.25,'linear');	
+		
+		objects.bonus0.visible=true;
+		objects.bonus1.visible=true;
+		objects.bonus2.visible=true;
+		
+		//создаем бонусы и перемешиваем их
+		let bonuses=[
+			{rnd:Math.random(),bonus:'life',tex:gres.bonus_life.texture,prompt:'Вы выиграли дополнительную жизнь!'},
+			{rnd:Math.random(),bonus:'hint',tex:gres.bonus_hint.texture,prompt:'Вы выиграли подсказку!'},
+			{rnd:Math.random(),bonus:'no',tex:gres.no_bonus.texture,prompt:'Вы ничего не выиграли((('}
+		];
+		bonuses=bonuses.sort((a, b) => a.rnd - b.rnd);
+				
+		objects.bonus0.texture=bonuses[0].tex;
+		objects.bonus1.texture=bonuses[1].tex;
+		objects.bonus2.texture=bonuses[2].tex;
+		
+		
+		const card_id=await new Promise(resolver=>{
+			game.bonus_dialog_resolver=resolver;				
+		})
+		
+		if (bonuses[card_id].bonus==='no')
+			sound.play('bad_bonus');
+		else
+			sound.play('good_bonus');	
+
+		objects.bonus_prompt.text=bonuses[card_id].prompt;
+		
+		//записываем бонус в актив
+		this.bonuses[bonuses[card_id].bonus]=true;
+		
+		if (card_id===0){			
+			anim2.add(objects.bonus0,{scale_xy:[0.6666, 1]}, true, 1,'easeOutBack');	
+			sound.play('card_move');
+			await anim2.add(objects.bonus_card0,{y:[objects.bonus_card0.y, 900]}, false, 1,'linear');sound.play('card_move');
+			await anim2.add(objects.bonus_card1,{y:[objects.bonus_card1.y, 900]}, false, 0.5,'linear');	sound.play('card_move');
+			await anim2.add(objects.bonus_card2,{y:[objects.bonus_card2.y, 900]}, false, 0.5,'linear');
+		}
+		
+		if (card_id===1){		
+			anim2.add(objects.bonus1,{scale_xy:[0.6666, 1]}, true, 1,'easeOutBack');	
+			sound.play('card_move');
+			await anim2.add(objects.bonus_card1,{y:[objects.bonus_card1.y, 900]}, false, 1,'linear');sound.play('card_move');	
+			await anim2.add(objects.bonus_card0,{y:[objects.bonus_card0.y, 900]}, false, 0.5,'linear');	sound.play('card_move');
+			await anim2.add(objects.bonus_card2,{y:[objects.bonus_card2.y, 900]}, false, 0.5,'linear');
+		}
+		
+		if (card_id===2){			
+			anim2.add(objects.bonus2,{scale_xy:[0.6666, 1]}, true, 1,'easeOutBack');		
+			sound.play('card_move');
+			await anim2.add(objects.bonus_card2,{y:[objects.bonus_card2.y, 900]}, false, 1,'linear');	sound.play('card_move');
+			await anim2.add(objects.bonus_card1,{y:[objects.bonus_card1.y, 900]}, false, 0.5,'linear');	sound.play('card_move');
+			await anim2.add(objects.bonus_card0,{y:[objects.bonus_card0.y, 900]}, false, 0.5,'linear');
+			
+		}
+		
+		anim2.add(objects.bonus_cont,{y:[objects.bonus_cont.y, 900]}, false, 0.5,'linear');	
 		
 	},
 	
@@ -961,24 +1165,18 @@ game={
 		
 	get_last_player(){
 				
-		//делаем массив игроков 
-		let players=[];
-		for(let c=0;c<4;c++){			
-			const player_card=objects.player_cards[c];
-			if (player_card.visible)
-				players.push(player_card);
-		}
-		
-		if(players.length<2)
+		//это если только один игрок
+		if(this.active_players.length===1)
 			return 'single';
-
 		
-		//сортируем массив игроков по найденым точкам
-		players.sort((a,b) => a.found_points - b.found_points); 
+		//определяем какой игрок на последнем месте
+		let last_player={place:-1};
+		this.active_players.forEach(player=>{
+			if(player.place>last_player.place)
+				last_player=player
+		})
 		
-		if (players[0].found_points===players[1].found_points)
-			return 'more_than_one_last';
-		return players[0];
+		return last_player;
 		
 	},
 	
@@ -995,6 +1193,76 @@ game={
 
 	},
 	
+	sound_button_down(){		
+		
+		
+		this.on=!this.on;
+		if(this.on){			
+			objects.sound_button_off.visible=false;
+			sound.on=1;
+			sound.play('click');
+		}else{
+			objects.sound_button_off.visible=true;
+			sound.on=0;
+		}		
+		
+	},
+	
+	music_button_down(){
+		
+		
+		this.on=!this.on;
+		if(this.on){			
+			objects.music_button_off.visible=false;
+			game.music.resume();
+		}else{
+			objects.music_button_off.visible=true;
+			game.music.pause();
+		}
+		sound.play('click');
+	},
+	
+	async hint_button_down(){
+		
+		if(anim2.any_on()){
+			sound.play('locked');
+			return;			
+		}
+		
+		sound.play('click');
+		objects.hint_button.visible=false;
+		this.bonuses.hint=false;
+		
+		let tarx=0, tary=0;
+		for (let dp of this.dp){
+			if (dp[2]===0){				
+				tarx=objects.pic1.x+objects.pic1cont.x+dp[0];
+				tary=objects.pic1.y+objects.pic1cont.y+dp[1];
+				break;
+			}		
+		}
+		
+		await anim2.add(objects.hint_pointer,{x:[tarx-400, tarx],y:[tary-400,tary]},true,1,'linear');	
+		sound.play('hint');
+		await anim2.add(objects.hint_pointer,{alpha:[1, 0]},false,2,'linear');	
+
+
+		
+	},
+	
+	close_button_down(){
+		
+		
+		if(anim2.any_on()){
+			sound.play('locked');
+			return;			
+		}
+		
+		sound.play('click');
+		this.finish_event('my_cancel');
+		
+	},
+	
 	exit(){
 		
 		this.close();
@@ -1004,6 +1272,7 @@ game={
 	
 	place_found_diff(dp){
 			
+		
 		
 		dp[2]=1;
 		objects.circles[game.found].x=dp[0]+objects.pic1.x+objects.pic1cont.x;
@@ -1038,12 +1307,16 @@ game={
 				
 		let finish_flag=false;
 		
+		
 		for(let i=0;i<this.active_players.length;i++){
 			
 			const player=this.active_players[i];
 			
-			if (player.place!==i)
-				player.change_place(i);
+			if (player.place!==i){				
+				player.change_place(i);					
+				sound.play('card_shift');
+			}
+
 			
 			if(player.found_points===this.dp.length)
 				finish_flag=true;
@@ -1074,6 +1347,10 @@ game={
 	
 	async tap(e){
 		
+		
+		if (game.mode==='finished')
+			return
+		
 		let mx = e.data.global.x/app.stage.scale.x - this.x-this.parent.x;
 		let my = e.data.global.y/app.stage.scale.y - this.y-this.parent.y;
 		let any_found=false;
@@ -1087,16 +1364,19 @@ game={
 			if (d<15 && dp[2]===0) {				
 				game.place_found_diff(dp);
 				objects.player_cards[3].add_point();
+				sound.play('my_diff_found');
 				any_found=true;
 			}
 			
 		}
 		
 		if(any_found===false){
+			sound.play('locked2');
+			my_card.my_incorrect_event();
 			objects.wrong.width=45;
 			objects.wrong.height=45;
 			objects.wrong.x=mx+this.x+this.parent.x;
-			objects.wrong.y=my+this.y+this.parent.y;
+			objects.wrong.y=my+this.y+this.parent.y;			
 			anim2.add(objects.wrong,{alpha:[1, 0]}, false, 1,'linear');	
 		}
 		
@@ -1345,8 +1625,12 @@ search_menu={
 			objects.player_cards[p].me=p===3;
 		}
 		
-		objects.player_cards[3].name.text=my_data.name;
-		objects.player_cards[3].avatar.texture=objects.id_avatar.texture;
+		//короткое глобальное обращение к моей карточке
+		my_card=objects.player_cards[3];		
+		
+		
+		my_card.name.text=my_data.name;
+		my_card.avatar.texture=objects.id_avatar.texture;
 
 		some_process.search_menu=this.process;
 		some_process.search_menu=this.process.bind(this);
@@ -1354,13 +1638,11 @@ search_menu={
 		objects.player_cards[1].set_pending();
 		objects.player_cards[2].set_pending();
 		
-		//короткое глобальное обращение к моей карточке
-		my_card=objects.player_cards[3];
+
 		
 		//показываем так как могли это удалить при одиночной игре
 		my_card.corner.visible=true;
-		my_card.place_t.visible=true;
-		
+		my_card.place_t.visible=true;		
 		
 		objects.player_cards[0].visible=true;
 		objects.player_cards[1].visible=true;
@@ -1368,7 +1650,7 @@ search_menu={
 		objects.player_cards[3].visible=true;
 		
 		//подсвечиваем мою карточку
-		objects.player_cards[3].bcg.tint=0xff5555;
+		my_card.bcg.tint=0xff5555;
 		
 		this.load_photos();
 	},
@@ -1377,7 +1659,7 @@ search_menu={
 		
 		let uset = new Set();
 		while (uset.size < N) {
-		let rint = Math.floor(Math.random() * (max_inc - min_inc + 1)) + min_inc;
+			const rint = Math.floor(Math.random() * (max_inc - min_inc + 1)) + min_inc;
 			uset.add(rint);
 		}
 		return Array.from(uset);		
@@ -1386,9 +1668,8 @@ search_menu={
 	async load_photos(){
 		
 		
-		//const tex=await PIXI.Texture.from('search_video.mp4');
-		//tex.baseTexture.resource.source.loop=true;
 		gres.search_video.data.loop=true;
+		gres.search_video.data.play();
 		
 		gres.search_video.data.addEventListener("play", (event) => {console.log('play')});
 		gres.search_video.data.addEventListener("pause", (event) => {console.log('pause')});
@@ -1399,8 +1680,21 @@ search_menu={
 		let texture = PIXI.Texture.from(gres.search_video.data);
 		objects.search_video.texture=texture;
 		
+		//получаем троих игроков
+		let min_player=my_data.rating*42;
+		let max_player=my_data.rating*42+500;
+		if (min_player>8000){
+			min_player=8000;
+			max_player=8583;
+		} 
 		
-		const fp_ids=this.get_unique_valus(3,0,8583);
+		if (min_player<=0){
+			min_player=0;
+			max_player=500;
+		} 
+		
+		
+		const fp_ids=this.get_unique_valus(3,min_player,max_player);
 		
 				
 		let fp_names={};
@@ -1408,12 +1702,17 @@ search_menu={
 		
 		//загружаем фотки
 		await new Promise((resolve, reject) => setTimeout(resolve, 1000));
-		objects.player_cards[0].set(fp_ids[0])
+		await objects.player_cards[0].set(fp_ids[0])
+		sound.play('player_found');
 		await new Promise((resolve, reject) => setTimeout(resolve, 1000));
-		objects.player_cards[1].set(fp_ids[1])
+		await objects.player_cards[1].set(fp_ids[1])
+		sound.play('player_found');
 		await new Promise((resolve, reject) => setTimeout(resolve, 1000));
-		objects.player_cards[2].set(fp_ids[2])
+		await objects.player_cards[2].set(fp_ids[2])
+		sound.play('player_found');
 		await new Promise((resolve, reject) => setTimeout(resolve, 1000));
+		
+		gres.search_video.data.pause();
 		this.close();
 		
 	},
@@ -1438,13 +1737,14 @@ main_menu={
 		
 		sound.play('start');
 		anim2.add(objects.game_title,{y:[-100, objects.game_title.sy],alpha:[0,1]}, true, 1,'linear',false);
-		anim2.add(objects.play_button,{x:[-300, objects.play_button.sx],alpha:[0,1]}, true, 1,'linear',false);
-		anim2.add(objects.lb_button,{x:[900, objects.lb_button.sx],alpha:[0,1]}, true, 1,'linear',false);
-		anim2.add(objects.rules_button,{y:[500, objects.rules_button.sy],alpha:[0,1]}, true, 1,'linear',false);
+		anim2.add(objects.play_button,{y:[900, objects.play_button.sy]}, true, 1,'easeOutBack',false);
+		anim2.add(objects.lb_button,{y:[900, objects.lb_button.sy]}, true, 1.2,'easeOutBack',false);
+		anim2.add(objects.rules_button,{y:[900, objects.rules_button.sy]}, true, 0.5,'easeOutBack',false);
 		
 	},
 	
 	play_button_down(){
+		
 		if(anim2.any_on())return;
 		sound.play('click');
 		this.close();
@@ -1460,19 +1760,21 @@ main_menu={
 	
 	lb_down(){
 		
-		if(anim2.any_on())return;
+		if(anim2.any_on()){
+			sound.play('locked');
+			return;
+		}
 		this.close();
-		lb.show();
-		
+		lb.show();		
 		
 	},
 		
 	close(){
 		
 		anim2.add(objects.game_title,{y:[objects.game_title.sy,-100]}, false, 1,'linear',false);
-		anim2.add(objects.play_button,{x:[objects.play_button.sx,-300]}, false, 1,'linear',false);
-		anim2.add(objects.lb_button,{x:[objects.lb_button.sx,900]}, false, 1,'linear',false);
-		anim2.add(objects.rules_button,{y:[objects.rules_button.sy,500]}, false, 1,'linear',false);
+		anim2.add(objects.play_button,{y:[objects.play_button.y,900]}, false, 1,'easeInBack',false);
+		anim2.add(objects.lb_button,{y:[objects.lb_button.y,900]}, false, 1.2,'easeInBack',false);
+		anim2.add(objects.rules_button,{y:[objects.rules_button.y,900]}, false, 0.5,'easeInBack',false);
 		
 	}
 		
@@ -1484,8 +1786,8 @@ lb={
 
 	show: function() {
 
-		objects.desktop.visible=true;
-		objects.desktop.texture=game_res.resources.lb_bcg.texture;
+		//objects.desktop.visible=true;
+		//objects.desktop.texture=game_res.resources.lb_bcg.texture;
 
 		anim2.add(objects.lb_1_cont,{x:[-150,objects.lb_1_cont.sx]},true,0.4,'easeOutBack');
 		anim2.add(objects.lb_2_cont,{x:[-150,objects.lb_2_cont.sx]},true,0.45,'easeOutBack');
@@ -1522,7 +1824,7 @@ lb={
 
 	back_button_down: function() {
 
-		if (any_dialog_active===1 || objects.lb_1_cont.ready===false) {
+		if (anim2.any_on()) {
 			sound.play('locked');
 			return
 		};
@@ -1816,7 +2118,7 @@ async function load_resources() {
 	document.getElementById("m_progress").style.display = 'flex';
 
 	git_src="https://akukamil.github.io/diff/"
-	git_src=""
+	//git_src=""
 
 	//подпапка с ресурсами
 	let lang_pack = ['RUS','ENG'][LANG];
@@ -1825,33 +2127,23 @@ async function load_resources() {
 	game_res.add("m2_font", git_src+"fonts/GOGONO/m_font.fnt");
 	game_res.add("search_video", git_src+"search_video.mp4");
 
-	game_res.add('receive_move',git_src+'sounds/receive_move.mp3');
-	game_res.add('receive_sticker',git_src+'sounds/receive_sticker.mp3');
-	game_res.add('message',git_src+'sounds/message.mp3');
-	game_res.add('lose',git_src+'sounds/lose.mp3');
-	game_res.add('draw',git_src+'sounds/draw.mp3');
-	game_res.add('eaten',git_src+'sounds/eaten.mp3');
-	game_res.add('win',git_src+'sounds/win.mp3');
 	game_res.add('click',git_src+'sounds/click.mp3');
-	game_res.add('click2',git_src+'sounds/click2.mp3');
-	game_res.add('mini_dialog',git_src+'sounds/mini_dialog.mp3');
-	game_res.add('pawn_replace_dialog',git_src+'sounds/pawn_replace_dialog.mp3');
-	game_res.add('pawn_replace',git_src+'sounds/pawn_replace.mp3');
-	game_res.add('close',git_src+'sounds/close.mp3');
-	game_res.add('move',git_src+'sounds/move.mp3');
+	game_res.add('my_diff_found',git_src+'sounds/my_diff_found.mp3');
+	game_res.add('card_shift',git_src+'sounds/whoosh.mp3');
 	game_res.add('locked',git_src+'sounds/locked.mp3');
-	game_res.add('clock',git_src+'sounds/clock.mp3');
-	game_res.add('keypress',git_src+'sounds/keypress.mp3');
-	game_res.add('test_your_might',git_src+'sounds/test_your_might.mp3');
-	game_res.add('mk_ring',git_src+'sounds/mk_ring.mp3');
-	game_res.add('mk_haha',git_src+'sounds/mk_haha.mp3');
-	game_res.add('mk_impressive',git_src+'sounds/mk_impressive.mp3');
-	game_res.add('mk_outstanding',git_src+'sounds/mk_outstanding.mp3');
-	game_res.add('mk_excelent',git_src+'sounds/mk_excelent.mp3');
-	game_res.add('hit',git_src+'sounds/hit.mp3');
-	game_res.add('mk_haha2',git_src+'sounds/mk_haha2.mp3');
+	game_res.add('locked2',git_src+'sounds/locked2.mp3');
+	game_res.add('opp_diff_found',git_src+'sounds/opp_diff_found.mp3');
+	game_res.add('player_found',git_src+'sounds/new_found2.mp3');
+	game_res.add('hint',git_src+'sounds/hint.mp3');
+	game_res.add('card_move',git_src+'sounds/card_move.mp3');
+	game_res.add('good_bonus',git_src+'sounds/good_bonus.mp3');
+	game_res.add('bad_bonus',git_src+'sounds/bad_bonus.mp3');
 	
-
+	game_res.add('win_round',git_src+'sounds/win_round.mp3');
+	game_res.add('more_than_one',git_src+'sounds/more_than_one.mp3');
+	game_res.add('applause',git_src+'sounds/applause.mp3');
+	game_res.add('lose',git_src+'sounds/lose.mp3');
+	
     //добавляем из листа загрузки
     for (var i = 0; i < load_list.length; i++)
         if (load_list[i].class === "sprite" || load_list[i].class === "image" )
@@ -2136,15 +2428,17 @@ async function init_game_env(lang) {
 	make_text(objects.id_name,my_data.name,150);
 	//make_text(objects.my_card_name,my_data.name,150);
 		
-	
+
 	//получаем остальные данные об игроке
 	const _other_data = await firebase.database().ref("players/"+my_data.uid).once('value');
 	const other_data = _other_data.val();
 	
 	//делаем защиту от неопределенности
-	my_data.rating = (other_data && other_data.rating) || 1400;
+	my_data.rating = (other_data && other_data.rating) || 0;	
 	my_data.games = (other_data && other_data.games) || 0;
 
+	//рейтинг в мою карточку
+	objects.id_rating.text=+my_data.rating;
 
 	//убираем лупу
 	objects.id_loup.visible=false;
