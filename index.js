@@ -1,6 +1,6 @@
 var M_WIDTH=800, M_HEIGHT=450;
 var app ={stage:{},renderer:{}}, game_res, objects={}, game_tick=0, LANG = 0,git_src,some_process = {}, game_platform='';
-var my_data={opp_id : ''}, my_card;
+var my_data={opp_id : ''}, my_card, music;
 const place_xpos=[0,160,320,480];
 
 irnd = function (min,max) {	
@@ -697,16 +697,12 @@ game={
 	mode:'online',
 	active_players:[],
 	bonus_dialog_resolver:null,
-	music:null,
 	bonuses:{life:false,hint:false,no:false},
 		
 	async activate() {
 							
-		//если открыт лидерборд то закрываем его
-		if (objects.lb_1_cont.visible===true) lb.close();		
 
 		this.mode='online';
-
 			
 		
 		//короткое обращение к моей карточке
@@ -745,8 +741,6 @@ game={
 		
 		//останавливаем игру
 		some_process.game=function(){};
-		
-		//this.music.stop();
 		
 		this.bonuses.life=false;
 		this.bonuses.hint=false;
@@ -817,6 +811,18 @@ game={
 		//удаляем из массива активных игроков
 		this.active_players = this.active_players.filter(function(card) {return card.id !== last_player.id});
 				
+		
+		for (let c of objects.circles){
+			if (c.visible) {
+				
+				await anim2.wait(0.1);
+				c.visible=false;
+				sound.play('card_shift');
+				
+			}			
+		}
+				
+				
 		//показываем крест
 		await anim2.add(last_player.cross_out,{alpha:[0, 1]}, true, 1,'linear');	
 				
@@ -835,11 +841,11 @@ game={
 		objects.dialog_no.visible=false;
 		objects.dialog_ok.visible=true;		
 		await anim2.add(objects.dialog_cont,{scale_y:[0, 1]}, true, 0.25,'linear');	
-
 				
 		await new Promise(resolve=>{			
 			objects.dialog_ok.pointerdown=resolve;			
-		})				
+		})
+		sound.play('click');
 
 		game.close();
 		main_menu.activate();			
@@ -889,7 +895,7 @@ game={
 			objects.dialog_no.pointerdown=function(){resolver('no')};			
 			objects.dialog_ok.pointerdown=function(){resolver('ok')};	
 		})	
-		
+		sound.play('click');
 		await anim2.add(objects.dialog_cont,{scale_y:[1, 0]}, false, 0.25,'linear');	
 		
 		if(res==='no'){			
@@ -948,7 +954,7 @@ game={
 		const res=await new Promise(resolver=>{			
 			objects.dialog_ok.pointerdown=function(){resolver('ok')};	
 		})	
-		
+		sound.play('click');
 		await anim2.add(objects.dialog_cont,{scale_y:[1, 0]}, false, 0.25,'linear');	
 		
 		
@@ -972,6 +978,10 @@ game={
 
 		anim2.add(objects.loading_header,{alpha:[0, 1]}, true, 0.25,'linear');
 				
+		some_process.loading_anim=function(){			
+			objects.loading_header.scale_x=0.666+Math.sin(game_tick*5)*0.1;
+		}
+				
 		my_card.init_life(this.bonuses.life);
 				
 		//загружаем картинки
@@ -982,11 +992,9 @@ game={
 		loader.add('pic1',`pics/${pic_id}/pic1.png`);
 		loader.add('pic2',`pics/${pic_id}/pic2.png`);
 		loader.add('dp',`pics/${pic_id}/dp.txt`);		
-		loader.add('music','music/titanium.mp3');
 		await new Promise(resolve=> loader.load(resolve))
 		
-		//if(this.music) this.music.stop();
-		this.music=loader.resources.music.sound;		
+	
 		
 		this.mode='online';
 		objects.pic1.texture=loader.resources.pic1.texture;
@@ -1005,6 +1013,7 @@ game={
 		console.log(dp_data[1],dp_data[2]);
 			
 		anim2.add(objects.loading_header,{alpha:[1, 0]}, false, 0.25,'linear');
+		some_process.loading_anim=function(){};
 		
 		//показываем надпись раунд
 		if (this.active_players.length===2)
@@ -1016,9 +1025,8 @@ game={
 		
 		
 		await anim2.add(objects.new_round_info,{scale_xy:[3, 0.666],alpha:[0.5,1],rotation:[0.5,0]}, true, 0.5,'linear');
+		sound.play('round_start');
 		await anim2.wait(1);
-		//this.music.play();
-		
 		await anim2.add(objects.new_round_info,{scale_xy:[0.666, 5],alpha:[1,0],rotation:[0,-0.5]}, true, 0.5,'linear');	
 		
 		
@@ -1033,6 +1041,7 @@ game={
 		anim2.add(objects.controls_cont,{y:[-200, objects.controls_cont.sy]}, true, 0.5,'linear');	
 		
 		
+		sound.play('slide');
 		anim2.add(objects.pic1cont,{x:[objects.pic1cont.sx-500, objects.pic1cont.sx]}, true, 0.5,'linear');	
 		await anim2.add(objects.pic2cont,{x:[objects.pic2cont.sx+500, objects.pic2cont.sx]}, true, 0.5,'linear');	
 		
@@ -1211,13 +1220,13 @@ game={
 	music_button_down(){
 		
 		
-		this.on=!this.on;
-		if(this.on){			
+		music.on=!music.on;
+		if(music.on){			
 			objects.music_button_off.visible=false;
-			//game.music.resume();
+			music.resume();
 		}else{
 			objects.music_button_off.visible=true;
-			//game.music.pause();
+			music.pause();
 		}
 		sound.play('click');
 	},
@@ -1672,11 +1681,6 @@ search_menu={
 		gres.search_video.data.loop=true;
 		gres.search_video.data.play();
 		
-		gres.search_video.data.addEventListener("play", (event) => {console.log('play')});
-		gres.search_video.data.addEventListener("pause", (event) => {console.log('pause')});
-		gres.search_video.data.addEventListener("ended", (event) => {console.log('ended')});
-		gres.search_video.data.addEventListener("playing", (event) => {console.log('playing')});
-		gres.search_video.data.addEventListener("waiting", (event) => {console.log('waiting')});
 		
 		let texture = PIXI.Texture.from(gres.search_video.data);
 		objects.search_video.texture=texture;
@@ -1702,16 +1706,16 @@ search_menu={
 		let loader=new PIXI.Loader();
 		
 		//загружаем фотки
-		await new Promise((resolve, reject) => setTimeout(resolve, irnd(2000,6000)));
+		await new Promise((resolve, reject) => setTimeout(resolve, irnd(1000,3000)));
 		await objects.player_cards[0].set(fp_ids[0])
 		sound.play('player_found');
-		await new Promise((resolve, reject) => setTimeout(resolve, irnd(2000,6000)));
+		await new Promise((resolve, reject) => setTimeout(resolve, irnd(1000,3000)));
 		await objects.player_cards[1].set(fp_ids[1])
 		sound.play('player_found');
-		await new Promise((resolve, reject) => setTimeout(resolve, irnd(2000,6000)));
+		await new Promise((resolve, reject) => setTimeout(resolve, irnd(1000,3000)));
 		await objects.player_cards[2].set(fp_ids[2])
 		sound.play('player_found');
-		await new Promise((resolve, reject) => setTimeout(resolve, irnd(2000,3000)));
+		await new Promise((resolve, reject) => setTimeout(resolve, irnd(1000,3000)));
 		
 		gres.search_video.data.pause();
 		this.close();
@@ -1739,16 +1743,31 @@ main_menu={
 	
 	async activate(){
 		
-		sound.play('start');
-		anim2.add(objects.header_title,{y:[-100, objects.header_title.sy],scale_x:[0.3,0.666]}, true, 1,'easeOutBounce',false);
-		anim2.add(objects.header_title2,{x:[1000, objects.header_title2.sx]}, true, 2,'linear',false);
-		anim2.add(objects.header_cards,{x:[-200, objects.header_cards.sx]}, true, 1,'easeOutBack',false);
-		anim2.add(objects.header_online,{scale_xy:[0, 0.666]}, true, 1,'easeOutBack',false);
-		await anim2.add(objects.header_loup,{y:[-500, objects.header_loup.sy]}, true, 1,'linear',false);
+		if (music.isPlaying===false&&music.on)
+			music.play();
 		
-		anim2.add(objects.play_button,{y:[900, objects.play_button.sy]}, true, 1,'easeOutBack');
-		anim2.add(objects.lb_button,{y:[900, objects.lb_button.sy]}, true, 1.2,'easeOutBack');
-		anim2.add(objects.rules_button,{y:[900, objects.rules_button.sy]}, true, 0.5,'easeOutBack');
+		if (gres.music.isPlay)
+		sound.play('music');
+	
+		sound.play('whoosh')
+		await anim2.add(objects.header_title,{y:[-100, objects.header_title.sy],scale_x:[0.3,0.666]}, true, 0.5,'easeOutBounce',false);
+		sound.play('whoosh')
+		await anim2.add(objects.header_title2,{x:[1000, objects.header_title2.sx]}, true, 0.35,'linear',false);
+		sound.play('whoosh')
+		await anim2.add(objects.header_cards,{x:[-200, objects.header_cards.sx]}, true, 0.5,'easeOutBack',false);
+		
+		sound.play('note6')
+		anim2.add(objects.header_online,{scale_xy:[0, 0.666]}, true, 0.25,'easeOutBack',false);
+		
+		
+		anim2.add(objects.header_loup,{y:[-500, objects.header_loup.sy]}, true, 1,'linear',false);
+		
+		sound.play('note5');
+		await anim2.add(objects.play_button,{y:[900, objects.play_button.sy]}, true, 0.25,'easeOutBack');
+		sound.play('note5');
+		await anim2.add(objects.lb_button,{y:[900, objects.lb_button.sy]}, true, 0.25,'easeOutBack');
+		sound.play('note5');
+		await anim2.add(objects.rules_button,{y:[900, objects.rules_button.sy]}, true, 0.25,'easeOutBack');
 		
 		some_process.main_menu=this.process;
 	},
@@ -2145,7 +2164,7 @@ async function load_resources() {
 	document.getElementById("m_progress").style.display = 'flex';
 
 	git_src="https://akukamil.github.io/diff/"
-	//git_src=""
+	git_src=""
 
 	//подпапка с ресурсами
 	let lang_pack = ['RUS','ENG'][LANG];
@@ -2156,20 +2175,25 @@ async function load_resources() {
 
 	game_res.add('click',git_src+'sounds/click.mp3');
 	game_res.add('my_diff_found',git_src+'sounds/my_diff_found.mp3');
-	game_res.add('card_shift',git_src+'sounds/whoosh.mp3');
+	game_res.add('whoosh',git_src+'sounds/whoosh.mp3');
 	game_res.add('locked',git_src+'sounds/locked.mp3');
 	game_res.add('locked2',git_src+'sounds/locked2.mp3');
 	game_res.add('opp_diff_found',git_src+'sounds/opp_diff_found.mp3');
-	game_res.add('player_found',git_src+'sounds/new_found2.mp3');
+	game_res.add('player_found',git_src+'sounds/new_found4.mp3');
 	game_res.add('hint',git_src+'sounds/hint.mp3');
 	game_res.add('card_move',git_src+'sounds/card_move.mp3');
 	game_res.add('good_bonus',git_src+'sounds/good_bonus.mp3');
 	game_res.add('bad_bonus',git_src+'sounds/bad_bonus.mp3');
-	
+	game_res.add('note5',git_src+'sounds/note5.mp3');
 	game_res.add('win_round',git_src+'sounds/win_round.mp3');
 	game_res.add('more_than_one',git_src+'sounds/more_than_one.mp3');
 	game_res.add('applause',git_src+'sounds/applause.mp3');
 	game_res.add('lose',git_src+'sounds/lose.mp3');
+	game_res.add('round_start',git_src+'sounds/note4.mp3');
+	game_res.add('slide',git_src+'sounds/slide.mp3');
+	game_res.add('music',git_src+'music/music.mp3');
+	game_res.add('note6',git_src+'sounds/note6.mp3');
+	
 	
     //добавляем из листа загрузки
     for (var i = 0; i < load_list.length; i++)
@@ -2182,10 +2206,14 @@ async function load_resources() {
 		document.getElementById("m_bar").style.width =  Math.round(loader.progress)+"%";
 	}
 	
-	//короткое обращение к ресурсам
-	gres=game_res.resources;
+
 	
 	await new Promise((resolve, reject)=> game_res.load(resolve))
+	
+	//короткое обращение к ресурсам
+	gres=game_res.resources;
+	music=gres.music.sound;	
+	music.on=true;
 	
 	//убираем элементы загрузки
 	document.getElementById("m_progress").outerHTML = "";	
