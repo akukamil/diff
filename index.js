@@ -767,7 +767,8 @@ game={
 		
 		//убираем кнопки чтобы никто не нажал
 		anim2.add(objects.controls_cont,{y:[objects.controls_cont.y,-200]}, false, 0.5,'linear');	
-					
+		anim2.add(objects.time_bar,{width:[objects.time_bar.width+5,0]}, true, 0.5,'linear');
+		
 		const last_player=this.get_last_player();
 		const is_fin_round=this.active_players.length===2;
 		
@@ -800,6 +801,10 @@ game={
 		sound.play('win_round');
 		objects.dialog_notice.text=['Вы прошли в следующий раунд!','You have advanced to the next round!'][LANG];		
 		objects.dialog_notice2.text=')))';
+		
+		
+		
+		
 		await anim2.add(objects.dialog_cont,{scale_y:[0, 1]}, true, 0.25,'linear');	
 		await anim2.wait(3);
 		await anim2.add(objects.dialog_cont,{scale_y:[1, 0]}, false, 0.25,'linear');	
