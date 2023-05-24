@@ -484,9 +484,12 @@ sound = {
 		
 		res_source[snd_res].sound.play();	
 		
+	},
+	
+	stop_all(){
+		
+		PIXI.sound.stopAll();
 	}
-	
-	
 }
 
 /*
@@ -769,7 +772,7 @@ game={
 		const is_fin_round=this.active_players.length===2;
 		
 		if (event==='no_life')
-			this.process_my_out(my_card);
+			this.process_my_out();
 				
 		if (event==='my_cancel')
 			this.process_my_cancel();
@@ -781,7 +784,7 @@ game={
 			this.process_my_win_game();
 		
 		if (last_player.me && this.mode==='online'&& !event)
-			this.process_my_out(last_player);
+			this.process_my_out();
 		
 		if (this.mode==='single'&& !event)
 			this.process_my_win_single();
@@ -795,7 +798,7 @@ game={
 		objects.dialog_no.visible=false;
 		objects.dialog_ok.visible=false;
 		sound.play('win_round');
-		objects.dialog_notice.text='Вы прошли в следующий раунд!';		
+		objects.dialog_notice.text=['Вы прошли в следующий раунд!','You have advanced to the next round!'][LANG];		
 		objects.dialog_notice2.text=')))';
 		await anim2.add(objects.dialog_cont,{scale_y:[0, 1]}, true, 0.25,'linear');	
 		await anim2.wait(3);
@@ -817,7 +820,7 @@ game={
 				
 				await anim2.wait(0.1);
 				c.visible=false;
-				sound.play('card_shift');
+				sound.play('whoosh');
 				
 			}			
 		}
@@ -836,8 +839,8 @@ game={
 		console.log('process_my_win_game');
 		sound.play('applause');
 		firebase.database().ref('players/'+my_data.uid+'/rating').set(+my_data.rating+1);
-		objects.dialog_notice.text='Вы выиграли)))';
-		objects.dialog_notice2.text='Рейтинг: '+my_data.rating+' > '+(+my_data.rating+1);			
+		objects.dialog_notice.text=['Вы выиграли)))','You Win)))'][LANG];
+		objects.dialog_notice2.text=['Рейтинг: ','Rating: '][LANG]+my_data.rating+' > '+(+my_data.rating+1);			
 		objects.dialog_no.visible=false;
 		objects.dialog_ok.visible=true;		
 		await anim2.add(objects.dialog_cont,{scale_y:[0, 1]}, true, 0.25,'linear');	
@@ -856,7 +859,7 @@ game={
 	async process_my_win_single(){
 		console.log('process_my_win_game');
 
-		objects.dialog_notice.text='Вы нашли все отличия, но не выиграли партию(((';
+		objects.dialog_notice.text=['Вы нашли все отличия, но не выиграли партию(((','You found all the differences, but did not win the game ((('][LANG];
 		objects.dialog_notice2.text=')))';	
 		objects.dialog_no.visible=false;
 		objects.dialog_ok.visible=true;
@@ -880,9 +883,9 @@ game={
 		//показываем крест
 		await anim2.add(my_card.cross_out,{alpha:[0, 1]}, true, 1,'linear');	
 				
-		objects.dialog_notice.text='Вы выбыли из игры(((.\nПродолжить искать?';		
+		objects.dialog_notice.text=['Вы выбыли из игры(((\nПродолжить искать?','You are out of the game(((\nDo you want to continue searching?'][LANG];		
 		
-		objects.dialog_notice2.text='Рейтинг: '+my_data.rating+' > '+(my_data.rating===0?0:(+my_data.rating-1));
+		objects.dialog_notice2.text=['Рейтинг: ','Rating: '][LANG]+my_data.rating+' > '+(my_data.rating===0?0:(+my_data.rating-1));
 		if (my_data.rating>0) my_data.rating--;
 		
 		await anim2.add(objects.dialog_cont,{scale_y:[0, 1]}, true, 0.25,'linear');	
@@ -912,7 +915,7 @@ game={
 			
 			for (let p of this.active_players){
 				if(!p.me){
-					sound.play('card_shift');
+					sound.play('whoosh');
 					await anim2.add(p,{y:[p.sy, p.sy-200]}, false, 0.25,'easeInBack');	
 					
 				}
@@ -923,7 +926,7 @@ game={
 			my_card.place_t.visible=false;
 			
 			anim2.add(my_card.cross_out,{alpha:[1, 0]}, false, 0.5,'linear');	
-			sound.play('card_shift');
+			sound.play('whoosh');
 			
 			await anim2.add(my_card,{x:[my_card.x, 0]}, true, 0.5,'linear');	
 			anim2.add(objects.controls_cont,{y:[-200, objects.controls_cont.sy]}, true, 0.5,'linear');	
@@ -938,9 +941,9 @@ game={
 		//показываем крест
 		await anim2.add(my_card.cross_out,{alpha:[0, 1]}, true, 1,'linear');	
 				
-		objects.dialog_notice.text='Вы отменили игру!';		
+		objects.dialog_notice.text=['Вы отменили игру!','You canceled the game!'][LANG];		
 		
-		objects.dialog_notice2.text='Рейтинг: '+my_data.rating+' > '+(my_data.rating===0?0:(my_data.rating-1));
+		objects.dialog_notice2.text=['Рейтинг: ','Rating: '][LANG]+my_data.rating+' > '+(my_data.rating===0?0:(my_data.rating-1));
 		my_data.rating=my_data.rating-1;		
 		
 
@@ -987,7 +990,7 @@ game={
 		//загружаем картинки
 		const loader=new PIXI.Loader();
 		pic_id=irnd(1,102);
-		//pic_id=1;
+		pic_id=36;
 		console.log('PIC_ID: ',pic_id)
 		loader.add('pic1',`pics/${pic_id}/pic1.png`);
 		loader.add('pic2',`pics/${pic_id}/pic2.png`);
@@ -1003,7 +1006,7 @@ game={
 		this.dp=dp_data[0];
 		
 		
-		objects.diff_num.text='Найди '+this.dp.length+' отличий';		
+		objects.diff_num.text=['Найди '+this.dp.length+' отличий','Find '+this.dp.length+' differences',][LANG];		
 		await anim2.add(objects.diff_num,{alpha:[0, 1]}, true, 0.5,'linear');
 		await anim2.wait(1);
 		anim2.add(objects.diff_num,{alpha:[1, 0]}, false, 0.5,'linear');
@@ -1098,11 +1101,11 @@ game={
 		await anim2.add(objects.bonus_cont,{y:[900,objects.bonus_cont.sy]}, true, 0.5,'linear');	
 
 		
-		sound.play('card_move');
+		sound.play('whoosh2');
 		await anim2.add(objects.bonus_card0,{x:[-100, objects.bonus_card0.sx],rotation:[-0.2,0]},true,0.25,'linear');	
-		sound.play('card_move');
+		sound.play('whoosh2');
 		await anim2.add(objects.bonus_card1,{x:[-100, objects.bonus_card1.sx],rotation:[-0.2,0]},true,0.25,'linear');	
-		sound.play('card_move');
+		sound.play('whoosh2');
 		await anim2.add(objects.bonus_card2,{x:[-100, objects.bonus_card2.sx],rotation:[-0.2,0]},true,0.25,'linear');	
 		
 		objects.bonus0.visible=true;
@@ -1138,25 +1141,25 @@ game={
 		
 		if (card_id===0){			
 			anim2.add(objects.bonus0,{scale_xy:[0.6666, 1]}, true, 1,'easeOutBack');	
-			sound.play('card_move');
-			await anim2.add(objects.bonus_card0,{y:[objects.bonus_card0.y, 900]}, false, 1,'linear');sound.play('card_move');
-			await anim2.add(objects.bonus_card1,{y:[objects.bonus_card1.y, 900]}, false, 0.5,'linear');	sound.play('card_move');
+			sound.play('whoosh2');
+			await anim2.add(objects.bonus_card0,{y:[objects.bonus_card0.y, 900]}, false, 1,'linear');sound.play('whoosh2');
+			await anim2.add(objects.bonus_card1,{y:[objects.bonus_card1.y, 900]}, false, 0.5,'linear');	sound.play('whoosh2');
 			await anim2.add(objects.bonus_card2,{y:[objects.bonus_card2.y, 900]}, false, 0.5,'linear');
 		}
 		
 		if (card_id===1){		
 			anim2.add(objects.bonus1,{scale_xy:[0.6666, 1]}, true, 1,'easeOutBack');	
-			sound.play('card_move');
-			await anim2.add(objects.bonus_card1,{y:[objects.bonus_card1.y, 900]}, false, 1,'linear');sound.play('card_move');	
-			await anim2.add(objects.bonus_card0,{y:[objects.bonus_card0.y, 900]}, false, 0.5,'linear');	sound.play('card_move');
+			sound.play('whoosh2');
+			await anim2.add(objects.bonus_card1,{y:[objects.bonus_card1.y, 900]}, false, 1,'linear');sound.play('whoosh2');	
+			await anim2.add(objects.bonus_card0,{y:[objects.bonus_card0.y, 900]}, false, 0.5,'linear');	sound.play('whoosh2');
 			await anim2.add(objects.bonus_card2,{y:[objects.bonus_card2.y, 900]}, false, 0.5,'linear');
 		}
 		
 		if (card_id===2){			
 			anim2.add(objects.bonus2,{scale_xy:[0.6666, 1]}, true, 1,'easeOutBack');		
-			sound.play('card_move');
-			await anim2.add(objects.bonus_card2,{y:[objects.bonus_card2.y, 900]}, false, 1,'linear');	sound.play('card_move');
-			await anim2.add(objects.bonus_card1,{y:[objects.bonus_card1.y, 900]}, false, 0.5,'linear');	sound.play('card_move');
+			sound.play('whoosh2');
+			await anim2.add(objects.bonus_card2,{y:[objects.bonus_card2.y, 900]}, false, 1,'linear');	sound.play('whoosh2');
+			await anim2.add(objects.bonus_card1,{y:[objects.bonus_card1.y, 900]}, false, 0.5,'linear');	sound.play('whoosh2');
 			await anim2.add(objects.bonus_card0,{y:[objects.bonus_card0.y, 900]}, false, 0.5,'linear');
 			
 		}
@@ -1323,7 +1326,7 @@ game={
 			
 			if (player.place!==i){				
 				player.change_place(i);					
-				sound.play('card_shift');
+				sound.play('whoosh');
 			}
 
 			
@@ -1743,8 +1746,7 @@ main_menu={
 	
 	async activate(){
 		
-		if (music.isPlaying===false&&music.on)
-			music.play();
+		if (music.isPlaying===false&&music.on) music.play();
 		
 		if (gres.music.isPlay)
 		sound.play('music');
@@ -1833,7 +1835,7 @@ lb={
 	show: function() {
 
 		//objects.desktop.visible=true;
-		//objects.desktop.texture=game_res.resources.lb_bcg.texture;
+		objects.bcg.texture=gres.lb_bcg.texture;
 
 		anim2.add(objects.lb_1_cont,{x:[-150,objects.lb_1_cont.sx]},true,0.4,'easeOutBack');
 		anim2.add(objects.lb_2_cont,{x:[-150,objects.lb_2_cont.sx]},true,0.45,'easeOutBack');
@@ -1865,6 +1867,7 @@ lb={
 		objects.lb_3_cont.visible=false;
 		objects.lb_cards_cont.visible=false;
 		objects.lb_back_button.visible=false;
+		objects.bcg.texture=gres.bcg.texture;
 
 	},
 
@@ -2151,10 +2154,19 @@ set_state=function(params) {
 
 vis_change=function() {
 
-	if (document.hidden === true)
-		hidden_state_start = Date.now();
-	
-	set_state({hidden : document.hidden});
+	if (document.hidden === true) {
+		hidden_state_start = Date.now();	
+		sound.on=0;
+		sound.stop_all();
+		
+	}
+
+	if (document.hidden === false) {
+		sound.on=1;
+		hidden_state_start = Date.now();	
+		if (music.isPlaying===false&&music.on) music.play();
+		
+	}
 	
 		
 }
@@ -2172,7 +2184,6 @@ async function load_resources() {
 	game_res=new PIXI.Loader();
 	game_res.add("m2_font", git_src+"fonts/GOGONO/m_font.fnt");
 	game_res.add("search_video", git_src+"search_video.mp4");
-
 	game_res.add('click',git_src+'sounds/click.mp3');
 	game_res.add('my_diff_found',git_src+'sounds/my_diff_found.mp3');
 	game_res.add('whoosh',git_src+'sounds/whoosh.mp3');
@@ -2181,12 +2192,11 @@ async function load_resources() {
 	game_res.add('opp_diff_found',git_src+'sounds/opp_diff_found.mp3');
 	game_res.add('player_found',git_src+'sounds/new_found4.mp3');
 	game_res.add('hint',git_src+'sounds/hint.mp3');
-	game_res.add('card_move',git_src+'sounds/card_move.mp3');
+	game_res.add('whoosh2',git_src+'sounds/whoosh2.mp3');
 	game_res.add('good_bonus',git_src+'sounds/good_bonus.mp3');
 	game_res.add('bad_bonus',git_src+'sounds/bad_bonus.mp3');
 	game_res.add('note5',git_src+'sounds/note5.mp3');
 	game_res.add('win_round',git_src+'sounds/win_round.mp3');
-	game_res.add('more_than_one',git_src+'sounds/more_than_one.mp3');
 	game_res.add('applause',git_src+'sounds/applause.mp3');
 	game_res.add('lose',git_src+'sounds/lose.mp3');
 	game_res.add('round_start',git_src+'sounds/note4.mp3');
@@ -2266,17 +2276,11 @@ async function define_platform_and_language() {
 		return;
 	}	
 
-	if (s.includes('google_play')) {
-			
-		game_platform = 'GOOGLE_PLAY';	
-		LANG = await language_dialog.show();
-		return;	
-	}	
 	
 	if (s.includes('192.168')) {
 			
 		game_platform = 'DEBUG';	
-		LANG = 0;
+		LANG = await language_dialog.show();
 		return;	
 	}	
 	
