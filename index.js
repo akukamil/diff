@@ -1799,10 +1799,15 @@ main_menu={
 		
 	},
 	
-	async rules_button_down(){
+	rules_button_down(){
 		if(anim2.any_on())return;
-		await game.wait_instructions();
+		anim2.add(objects.rules,{alpha:[0, 1]},true,0.5,'linear');	
 		
+	},
+	
+	rules_ok_down(){
+		if(anim2.any_on())return;
+		anim2.add(objects.rules,{alpha:[1, 0]},false,0.5,'linear');	
 	},
 	
 	lb_down(){
