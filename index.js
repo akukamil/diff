@@ -1646,8 +1646,7 @@ search_menu={
 		//короткое глобальное обращение к моей карточке
 		my_card=objects.player_cards[3];		
 		
-		
-		my_card.name.text=my_data.name;
+		make_text(my_card.name,my_data.name,150);
 		my_card.avatar.texture=objects.id_avatar.texture;
 
 		some_process.search_menu=this.process;
@@ -2496,7 +2495,7 @@ async function init_game_env(lang) {
 	
 	//устанавлием имя на карточки
 	make_text(objects.id_name,my_data.name,150);
-	//make_text(objects.my_card_name,my_data.name,150);
+
 		
 
 	//получаем остальные данные об игроке
