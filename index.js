@@ -189,6 +189,13 @@ class player_card_class extends PIXI.Container{
 		
 	}
 	
+	transliterate(word){
+		var a = {"Ё":"YO","Й":"I","Ц":"TS","У":"U","К":"K","Е":"E","Н":"N","Г":"G","Ш":"SH","Щ":"SCH","З":"Z","Х":"H","Ъ":"'","ё":"yo","й":"i","ц":"ts","у":"u","к":"k","е":"e","н":"n","г":"g","ш":"sh","щ":"sch","з":"z","х":"h","ъ":"'","Ф":"F","Ы":"I","В":"V","А":"A","П":"P","Р":"R","О":"O","Л":"L","Д":"D","Ж":"ZH","Э":"E","ф":"f","ы":"i","в":"v","а":"a","п":"p","р":"r","о":"o","л":"l","д":"d","ж":"zh","э":"e","Я":"Ya","Ч":"CH","С":"S","М":"M","И":"I","Т":"T","Ь":"'","Б":"B","Ю":"YU","я":"ya","ч":"ch","с":"s","м":"m","и":"i","т":"t","ь":"'","б":"b","ю":"yu"};
+		return word.split('').map(function (char) { 
+			return a[char] || char; 
+		}).join("");
+	}
+	
 	async set(fp_id){
 		
 		const snapshot = await firebase.database().ref("fp/"+fp_id).once('value');
@@ -196,6 +203,12 @@ class player_card_class extends PIXI.Container{
 		const loader=new PIXI.Loader();
 		loader.add('fp'+fp_id, fp_data.pic_url,{loadType: PIXI.LoaderResource.LOAD_TYPE.IMAGE, timeout: 5000});
 		await new Promise(resolve=> loader.load(resolve));
+		
+		
+
+
+		if (LANG===1) fp_data.name=this.transliterate(fp_data.name);
+		
 		make_text(this.name,fp_data.name,130);
 		this.avatar.rotation=0;
 		this.avatar.texture=loader.resources['fp'+fp_id].texture||PIXI.Texture.WHITE;
