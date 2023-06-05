@@ -2032,10 +2032,10 @@ async function load_resources() {
 
 	//подпапка с ресурсами
 	let lang_pack = ['RUS','ENG'][LANG];
-
+	
 	game_res=new PIXI.Loader();
 	game_res.add("m2_font", git_src+"fonts/GOGONO/m_font.fnt");
-	game_res.add("search_video", git_src+"search_video.mp4");
+	game_res.add("search_video", git_src+`search_video${irnd(1,5)}.mp4`);
 	game_res.add('click',git_src+'sounds/click.mp3');
 	game_res.add('my_diff_found',git_src+'sounds/my_diff_found.mp3');
 	game_res.add('whoosh',git_src+'sounds/whoosh.mp3');
