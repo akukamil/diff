@@ -203,9 +203,7 @@ class player_card_class extends PIXI.Container{
 		const loader=new PIXI.Loader();
 		loader.add('fp'+fp_id, fp_data.pic_url,{loadType: PIXI.LoaderResource.LOAD_TYPE.IMAGE, timeout: 5000});
 		await new Promise(resolve=> loader.load(resolve));
-		
-		
-
+				
 
 		if (LANG===1) fp_data.name=this.transliterate(fp_data.name);
 		
@@ -214,8 +212,8 @@ class player_card_class extends PIXI.Container{
 		this.avatar.texture=loader.resources['fp'+fp_id].texture||PIXI.Texture.WHITE;
 		this.process=function(){};
 		
-		this.search_start_time=10-(fp_id/8583)*5+Math.random()*3;
-		this.search_inc_time=1-(fp_id/8583);
+		this.search_start_time=7-(fp_id/8583)*6;
+		this.search_inc_time=2-(fp_id/8583)*1.7;
 		this.next_find_time=this.search_start_time;
 		
 	}
@@ -264,8 +262,14 @@ class player_card_class extends PIXI.Container{
 		if(game_tick>this.next_find_time){
 			
 
-			this.add_point();
-			this.next_find_time=game_tick+this.search_start_time+this.search_inc_time*this.found_points+Math.random()*20;			
+			this.add_point();			
+			this.next_find_time=game_tick+this.search_start_time+this.search_inc_time*this.found_points;	
+			this.next_find_time+=Math.random()*5;
+			
+			//впадение в ступор
+			if (Math.random()>0.8)
+			this.next_find_time+=irnd(10,15);
+			
 			sound.play('opp_diff_found');
 			console.log('fp added points')
 		}
@@ -504,183 +508,6 @@ sound = {
 		PIXI.sound.stopAll();
 	}
 }
-
-/*
-dialog={
-	
-	invite:false,
-	share:false,
-	
-	async show(type){		
-		
-		objects.dialog_no.pointerdown=function(){};
-		objects.dialog_ok.pointerdown=function(){};
-		
-		if(type==='resume_request'){
-			anim2.add(objects.dialog_cont,{alpha:[0, 1]},true,0.4,'linear');	
-			objects.dialog_card.texture=gres.game_over_img.texture;		
-			objects.dialog_no.visible=true;
-			objects.dialog_ok.visible=true;
-			objects.dialog_ok.pointerdown=function(){
-				if(anim2.any_on())return;
-				dialog.close();				
-				game.resume_single_mode();
-			};
-			objects.dialog_no.pointerdown=function(){
-				if(anim2.any_on())return;
-				dialog.close();				
-				game.exit();
-
-			};
-		}
-		
-		if(type==='single_mode_complete'){
-			anim2.add(objects.dialog_cont,{alpha:[0, 1]},true,0.4,'linear');	
-			objects.dialog_card.texture=gres.single_mode_done_img.texture;		
-			objects.dialog_no.visible=false;
-			objects.dialog_ok.visible=true;
-			objects.dialog_ok.pointerdown=function(){
-				if(anim2.any_on())return;
-				dialog.close();				
-				game.exit();
-			};
-
-		}
-		
-		if(type==='win'){
-			anim2.add(objects.dialog_cont,{alpha:[0, 1]},true,0.4,'linear');	
-			objects.dialog_card.texture=gres.win_img.texture;		
-			objects.dialog_no.visible=false;
-			objects.dialog_ok.visible=true;
-			objects.dialog_ok.pointerdown=function(){
-				if(anim2.any_on())return;
-				dialog.close();				
-				game.exit();
-			};
-
-		}
-		
-		if(type==='more_than_one_last'){
-			anim2.add(objects.dialog_cont,{alpha:[0, 1]},true,0.4,'linear');	
-			objects.dialog_card.texture=gres.replay_img.texture;		
-			objects.dialog_no.visible=false;
-			objects.dialog_ok.visible=false;
-			await anim2.wait(3);
-			dialog.close();	
-
-		}
-				
-		if(type==='rules'){
-			anim2.add(objects.dialog_cont,{alpha:[0, 1]},true,0.4,'linear');	
-			objects.dialog_card.texture=gres.rules_img.texture;		
-			objects.dialog_no.visible=false;
-			objects.dialog_ok.visible=true;
-			objects.dialog_ok.pointerdown=function(){
-				if(anim2.any_on())return;
-				sound.play('click');
-				dialog.close();					
-				objects.dialog_card.resolver();
-			};
-			
-			return new Promise(resolver=>{				
-				objects.dialog_card.resolver=resolver;			
-			})
-		}
-		
-		if(type==='ad_break'){
-			anim2.add(objects.dialog_cont,{alpha:[0, 1]},true,0.4,'linear');	
-			objects.dialog_card.texture=gres.ad_break_img.texture;	
-			objects.dialog_no.visible=false;
-			objects.dialog_ok.visible=false;
-			setTimeout(function(){dialog.close()},3000);
-			return new Promise(resolver=>{				
-				objects.dialog_card.resolver=resolver;			
-			})
-			
-		}
-		
-		if(type==='share'){
-			if(this.share) return 'none';			
-			this.share=true;
-			anim2.add(objects.dialog_cont,{alpha:[0, 1]},true,0.4,'linear');	
-			objects.dialog_card.texture=gres.share_img.texture;	
-			objects.dialog_card.resolver=function(){};
-			objects.dialog_no.visible=true;
-			objects.dialog_ok.visible=true;
-			
-			objects.dialog_ok.pointerdown=function(){
-				if(anim2.any_on())return;
-				dialog.close();		
-				sound.play('click');
-				vkBridge.send('VKWebAppShowWallPostBox', { message: 'Я играю в Пианиста и мне нравится!'})
-				objects.dialog_card.resolver();
-
-			};
-			objects.dialog_no.pointerdown=function(){
-				if(anim2.any_on())return;
-				objects.dialog_no.visible=false;
-				objects.dialog_ok.visible=false;
-				objects.dialog_card.texture=gres.thanks_img.texture;	
-				dialog.close_delayed();	
-				sound.play('click');				
-				
-
-			};
-			return new Promise(resolver=>{				
-				objects.dialog_card.resolver=resolver;			
-			})
-		}
-			
-		if(type==='invite_friends'){
-			if(this.invite)  return 'none';
-			this.invite=true;
-			anim2.add(objects.dialog_cont,{alpha:[0, 1]},true,0.4,'linear');	
-			objects.dialog_card.texture=gres.invite_friends_img.texture;	
-			objects.dialog_card.resolver=function(){};
-			objects.dialog_no.visible=true;
-			objects.dialog_ok.visible=true;
-			
-			objects.dialog_ok.pointerdown=function(){
-				if(anim2.any_on())return;
-				dialog.close();	
-				sound.play('click');
-				vkBridge.send('VKWebAppShowInviteBox');
-				objects.dialog_card.resolver();
-
-			};
-			objects.dialog_no.pointerdown=function(){
-				if(anim2.any_on())return;
-				objects.dialog_no.visible=false;
-				objects.dialog_ok.visible=false;
-				objects.dialog_card.texture=gres.thanks_img.texture;	
-				dialog.close_delayed();	
-				objects.dialog_card.resolver();
-				sound.play('click');
-
-			};
-			return new Promise(resolver=>{				
-				objects.dialog_card.resolver=resolver;			
-			})
-		}
-		
-	},
-	
-	close(){
-		if(objects.dialog_card.resolver && typeof objects.dialog_card.resolver === 'function')
-			objects.dialog_card.resolver();
-		anim2.add(objects.dialog_cont,{alpha:[1, 0]},false,0.3,'linear');	
-		
-	},
-	
-	close_delayed(){
-		
-		setTimeout(function(){objects.dialog_card.resolver();dialog.close()},2000);
-		
-	}
-	
-	
-}
-*/
 
 make_text = function (obj, text, max_width) {
 
@@ -1708,6 +1535,9 @@ search_menu={
 		//получаем троих игроков
 		let min_player=my_data.rating*42;
 		let max_player=my_data.rating*42+500;
+		
+		
+		
 		if (min_player>8000){
 			min_player=8000;
 			max_player=8583;
