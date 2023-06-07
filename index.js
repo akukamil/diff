@@ -683,9 +683,11 @@ game={
 	async process_my_win_game(){
 		console.log('process_my_win_game');
 		sound.play('applause');
-		firebase.database().ref('players/'+my_data.uid+'/rating').set(+my_data.rating+1);
+		const old_rating=my_data.rating;
+		my_data.rating++;
+		firebase.database().ref('players/'+my_data.uid+'/rating').set(+my_data.rating);
 		objects.dialog_notice.text=['Вы выиграли)))','You Win)))'][LANG];
-		objects.dialog_notice2.text=['Рейтинг: ','Rating: '][LANG]+my_data.rating+' > '+(+my_data.rating+1);			
+		objects.dialog_notice2.text=['Рейтинг: ','Rating: '][LANG]+old_rating+' > '+(+my_data.rating);
 		objects.dialog_no.visible=false;
 		objects.dialog_ok.visible=true;		
 		await anim2.add(objects.dialog_cont,{scale_y:[0, 1]}, true, 0.25,'linear');	
