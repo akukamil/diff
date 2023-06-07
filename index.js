@@ -264,7 +264,7 @@ class player_card_class extends PIXI.Container{
 
 			this.add_point();			
 			this.next_find_time=game_tick+this.search_start_time+this.search_inc_time*this.found_points;	
-			this.next_find_time+=Math.random()*5;
+			this.next_find_time+=irnd(-5,5);
 			
 			//впадение в ступор
 			if (Math.random()>0.8)
