@@ -791,7 +791,7 @@ game={
 		objects.dialog_notice.text=['Вы отменили игру!','You canceled the game!'][LANG];		
 		
 		objects.dialog_notice2.text=['Рейтинг: ','Rating: '][LANG]+my_data.rating+' > '+(my_data.rating===0?0:(my_data.rating-1));
-		my_data.rating=my_data.rating-1;		
+		if (my_data.rating>0) my_data.rating--;	
 		
 
 		
